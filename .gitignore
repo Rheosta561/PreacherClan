@@ -1,1 +1,4 @@
 Backend/.env
+Backend/node_modules
+Frontend/PreacherClan/node_modules
+
