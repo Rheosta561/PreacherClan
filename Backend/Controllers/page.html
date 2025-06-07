@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 0;
+                background: #f4f4f4;
+            }
+            .container {
+                max-width: 600px;
+                margin: 20px auto;
+                padding: 20px;
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                background: #f9f9f9;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+                text-align: center;
+                padding: 10px;
+                background: #000000;
+                color: white;
+                border-radius: 10px 10px 0 0;
+                overflow: hidden;
+            }
+            .content {
+                padding: 20px;
+                color: #333;
+            }
+            .otp {
+                font-size: 1.5rem;
+                color: #ba047e;
+                font-weight: bold;
+                text-align: center;
+                display: block;
+                margin: 20px 0;
+            }
+            .footer {
+                text-align: center;
+                padding: 10px;
+                font-size: 0.9rem;
+                color: #888;
+                border-top: 1px solid #ccc;
+                margin-top: 20px;
+            }
+            .logo {
+                height: 50%;
+                width: 50%;
+                transform: scale(1.2);
+                border-radius: 0.5rem;
+            }
+
+            /* Media Query for Smaller Screens */
+            @media screen and (max-width: 768px) {
+                .container {
+                    margin: 10px;
+                    padding: 15px;
+                }
+                .content {
+                    padding: 15px;
+                }
+                .otp {
+                    font-size: 1.25rem;
+                }
+                .logo {
+                    width: 60%;
+                    transform: scale(1);
+                    height: 50%;
+                }
+            }
+
+            @media screen and (max-width: 480px) {
+                .container {
+                    margin: 10px;
+                    padding: 10px;
+                }
+                .content {
+                    padding: 10px;
+                }
+                .otp {
+                    font-size: 1rem;
+                }
+                .logo {
+                    width: 70%;
+                    height: 50%;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
+            </div>
+            <div class="content">
+                <p><b>Hi ${username},</b></p>
+                <p>Welcome to <b>Preacher Clan</b>! We are thrilled to have you join our growing community of fitness enthusiasts.</p>
+                <p>Preacher Clan is all about collecting ideas from workout lovers to revolutionize fitness in India. Our vision is to build a strong and supportive community where fitness is not just a routine but a movement.</p>
+                
+                <hr>
+                <p>We're here to support you on your fitness journey—let’s push together for <strong>" Ek Rep Aur "</strong> !</p>
+                <p>See you at the top,</p>
+                <p><b>Team Preacher Clan</b></p>
+
+            </div>
+    
