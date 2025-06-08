@@ -5,7 +5,7 @@ import { jwtDecode } from "jwt-decode";
 
 import search from "./assets/search.png";
 import SearchResult from "./Components/SearchResult";
-import BottomRow from "./Components/bottomRow";
+import BottomRow from "./Components/BottomRow";
 import GymInfoCard from "./Components/GymInfoCard";
 import AdviceCard from "./Components/AdviceCard";
 import ProfileCard from "./Components/ProfileCard";
