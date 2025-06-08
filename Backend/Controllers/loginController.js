@@ -81,7 +81,7 @@ exports.login = async (req, res) => {
     // Exclude password from user object before sending
     const { password: pwd, ...safeUser } = user.toObject();
 
-    return res.redirect(`http://localhost:5173/dashboard?token=${token}`);
+    return res.redirect(`https://preacherclan.vercel.app/dashboard?token=${token}`);
 
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -219,7 +219,7 @@ exports.signUp= async(req,res)=>{
 
         await sendEmail(email, "Welcome to PreacherClan!", htmlContent);
 
-        return res.redirect(`http://localhost:5173/dashboard?token=${token}`);
+        return res.redirect(`https://preacherclan.vercel.app/dashboard?token=${token}`);
         
     } catch (error) {
         res.status(404).json({error:"Something went wrong" , message:"Something went wrong"});
