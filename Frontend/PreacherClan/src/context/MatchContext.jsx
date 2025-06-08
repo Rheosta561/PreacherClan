@@ -13,7 +13,7 @@ export const MatchProvider = ({ children }) => {
 
     if (!userId || userId===null) return;
 
-    const socket = io('http://localhost:3000'); 
+    const socket = io('https://preacherclan.onrender.com'); 
     socketRef.current = socket;
 
     socket.emit('userOnline', userId);

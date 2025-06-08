@@ -28,7 +28,7 @@ const handleRequest = async () => {
     }
 
     const response = await axios.post(
-      `http://localhost:3000/requests/send/${localUser._id}/${profile.id}`
+      `https://preacherclan.onrender.com/requests/send/${localUser._id}/${profile.id}`
     );
 
     console.log("Request sent to server:", response);

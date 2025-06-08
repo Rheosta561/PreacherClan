@@ -41,7 +41,7 @@ function Navbar() {
       if(user){
         
       }
-      const response = await axios.get(`http://localhost:3000/profile/${user?._id}`);
+      const response = await axios.get(`https://preacherclan.onrender.com/profile/${user?._id}`);
       console.log("Profile response:", response.data);
       if(response.status !==200){
         console.error("Failed to fetch profile:", response.statusText);

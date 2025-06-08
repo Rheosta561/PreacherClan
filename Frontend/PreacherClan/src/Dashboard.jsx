@@ -118,7 +118,7 @@ useEffect(() => {
       
       console.log("Decoded Token:", decoded);
       try {
-        const response = await axios.get(`http://localhost:3000/user/${userId}`);
+        const response = await axios.get(`https://preacherclan.onrender.com/user/${userId}`);
         console.log("User Found");
         localStorage.setItem('user', JSON.stringify(response.data));
         localStorage.setItem('token', token);
@@ -140,7 +140,7 @@ useEffect(() => {
 useEffect(() => {
   const fetchGyms = async()=>{
     try {
-      const response = await axios.get("http://localhost:3000/gym/all");
+      const response = await axios.get("https://preacherclan.onrender.com/gym/all");
       if(response.data && response.data.length > 0) {
         console.log("Total Gyms Found:", response.data.length);
         setGyms(response.data);

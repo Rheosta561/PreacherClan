@@ -26,7 +26,7 @@ function JoinClan() {
   useEffect(() => {
     const fetchGym = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/gym/gym/${gymId}`);
+        const response = await axios.get(`https://preacherclan.onrender.com/gym/gym/${gymId}`);
         if (!response) {
           console.error('Gym Not Found');
           return;
@@ -75,7 +75,7 @@ function JoinClan() {
                 if (code) {
                   setTimeout(() => {
                     // Navigate or redirect to join with code and userId
-                    window.open(`http://localhost:3000/join/${code}/${userId}`);
+                    window.open(`https://preacherclan.onrender.com/join/${code}/${userId}`);
                   }, 1500);
                 } else {
                   alert('No valid 6-digit clan code found in QR.');
@@ -115,7 +115,7 @@ function JoinClan() {
   const handleManualSubmit = (e) => {
     e.preventDefault();
     if (/^\d{6}$/.test(manualCode)) {
-      window.open(`http://localhost:3000/join/${manualCode}/${userId}`);
+      window.open(`https://preacherclan.onrender.com/join/${manualCode}/${userId}`);
     } else {
       alert('Please enter a valid 6-digit clan code.');
     }

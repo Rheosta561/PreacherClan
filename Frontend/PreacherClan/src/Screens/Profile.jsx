@@ -44,7 +44,7 @@ function Profile() {
           }
 
           // If profile is missing or invalid, fetch it
-          const response = await fetch(`http://localhost:3000/profile/${parsedUser._id}`);
+          const response = await fetch(`https://preacherclan.onrender.com/profile/${parsedUser._id}`);
           if (response.ok) {
             const profileData = await response.json();
             console.log("Fetched profile data:", profileData);
@@ -97,7 +97,7 @@ const handleSave = async () => {
     }
     console.log("FormData:", formData);
 
-    const response = await fetch(`http://localhost:3000/profile/${userId}`, {
+    const response = await fetch(`https://preacherclan.onrender.com/profile/${userId}`, {
       method: "PUT",
       body: formData,
     });

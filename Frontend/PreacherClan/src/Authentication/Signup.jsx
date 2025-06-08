@@ -3,7 +3,7 @@ import bg from '../assets/bg.jpg'
 
 const Signup = () => {
   const handleGoogleLogin = () => {
-        window.location.href = "http://localhost:3000/auth/google";
+        window.location.href = "https://preacherclan.onrender.com/auth/google";
     };
 
   return (

@@ -35,7 +35,7 @@ function StreakMarker() {
             setResult(decodedText);
             const match = decodedText.match(/\d{6}/)
             setTimeout(() => {
-      window.location.href = `http://localhost:3000/streak/${match}/${userId}`;
+      window.location.href = `https://preacherclan.onrender.com/streak/${match}/${userId}`;
     }, 1500);  
           });
         },

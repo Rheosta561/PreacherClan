@@ -46,7 +46,7 @@ useEffect(() => {
         setMembers(sessionGym.members);
       } else {
         // Fetch from API
-        const response = await axios.get(`http://localhost:3000/gym/gym/${gymId}`);
+        const response = await axios.get(`https://preacherclan.onrender.com/gym/gym/${gymId}`);
         console.log('Fetched from API:', response.status);
 
         const foundGym = response.data;

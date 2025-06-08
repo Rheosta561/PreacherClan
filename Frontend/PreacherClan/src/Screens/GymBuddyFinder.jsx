@@ -54,7 +54,7 @@ function GymBuddyFinder() {
           return;
         }
         setUser(user);
-        const response = await axios.get(`http://localhost:3000/repmate/${user._id}`);
+        const response = await axios.get(`https://preacherclan.onrender.com/repmate/${user._id}`);
         console.log(response.data);
         if (response.data && response.data.profiles) {
           setProfiles(response.data.profiles);
@@ -87,7 +87,7 @@ function GymBuddyFinder() {
           navigate("/login");
           return;
         }
-        const response = await axios.get(`http://localhost:3000/requests/${user._id}`);
+        const response = await axios.get(`https://preacherclan.onrender.com/requests/${user._id}`);
         console.log("Requests response:", response.data);
         if (response.data && response.data.requests) {
           setRequests(response.data.requests);
@@ -176,7 +176,7 @@ const handleSwipe = async(direction) => {
 
   if (direction === "left") {
     setIndex((prev) => prev + 1);
-    const response = await  axios.post(`http://localhost:3000/requests/send/${user._id}/${profile.userId}`, )
+    const response = await  axios.post(`https://preacherclan.onrender.com/requests/send/${user._id}/${profile.userId}`, )
     
     console.log("Request sent to server:", response);
     toast("🪓 Request Sent!", {
@@ -202,7 +202,7 @@ const handleSwipe = async(direction) => {
   //         navigate("/login");
   //         return;
   //       }
-  //       const response = await axios.get(`http://localhost:3000/repmate`);
+  //       const response = await axios.get(`https://preacherclan.onrender.com/repmate`);
   //       console.log(response.data);
   //       if (response.data && response.data.profiles) {
   //         setProfiles(response.data.profiles);
@@ -230,7 +230,7 @@ const handleSwipe = async(direction) => {
   
   const handleAccept = async (requestId) => {
   try {
-    const response = await axios.post(`http://localhost:3000/requests/${user._id}/${requestId}`);
+    const response = await axios.post(`https://preacherclan.onrender.com/requests/${user._id}/${requestId}`);
     console.log("Accept response:", response.data);     
     if (response.status === 200) {
       toast.success("Request accepted!", {

@@ -91,7 +91,7 @@ const Onboarding = () => {
       formData.append("ambition", JSON.stringify(ambition));
       formData.append("exerciseGenre", JSON.stringify(exerciseGenre));
 
-      const response = await fetch(`http://localhost:3000/profile/${userId}`, {
+      const response = await fetch(`https://preacherclan.onrender.com/profile/${userId}`, {
         method: "POST",
         body: formData,
       });
