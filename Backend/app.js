@@ -10,10 +10,21 @@ const userRouter = require('./Routes/UserRouter');
 const http = require('http');
 const { Server } = require('socket.io');
 const server = http.createServer(app);
+const requests = require('./Models/Requests');
+const repmateRouter = require('./Routes/RepmateRouter');
 const {initSocket} = require('./socket');
 initSocket(server);
 const NotificationRouter = require('./Routes/NotificationRouter');
 
+// const deleteRequests = async(req,res)=>{
+//     try {
+//         const deletedRequests = await requests.deleteMany();
+//        console.log(`Deleted ${deletedRequests.deletedCount} rejected requests`);
+//     } catch (error) {
+//         console.error("Error deleting rejected requests:", error);
+//     }
+// }
+// deleteRequests();
 
 
 conn();
@@ -29,6 +40,16 @@ app.use(useragent.express());
 app.use(cors());
 resetJobs.setupResetJobs();
 
+const resetStreak = require('./Utils/resetStreak');
+const cron = require('node-cron');
+cron.schedule('0 0 * * *', () => {
+    console.log('Running streak reset job at midnight');
+    resetStreak();
+}, {
+    timezone: "Asia/Kolkata"
+});
+
+
 
 app.get('/' , (req,res)=>{
     res.send('Preacher Clan Backend is working');
@@ -40,6 +61,7 @@ app.use('/join', JoinGymRoutes);
 app.use('/requests' , requestHandlerRouter);
 app.use('/user', userRouter);
 app.use('/notifications', NotificationRouter);
+app.use('/repmate' , repmateRouter); 
 
 
 const port = process.env.PORT || 3000 ;

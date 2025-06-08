@@ -11,7 +11,7 @@ export const NotificationProvider = ({ children }) => {
 
   useEffect(() => {
     const user = localStorage.getItem('user');
-    const userId = user ? JSON.parse(user)._id : null;
+    const userId = user ? JSON.parse(user)?._id : null;
    
     if (!userId) return;
 

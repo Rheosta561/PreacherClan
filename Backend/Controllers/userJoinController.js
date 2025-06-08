@@ -1,13 +1,14 @@
 const User = require('../Models/User');
 const Gym = require('../Models/GymSchema');
 const { sendEmail } = require('../Utils/emailService'); 
+const notificationService = require('../Utils/NotificationService'); // Assuming you have a notification service
 
 
 
 const joinController = async(req,res)=>{
     try {
         const {userId}= req.params;
-        const {gymCode} = req.body;
+        const {gymCode} = req.params;
         const foundGym = await Gym.findOne({gymCode}).populate('members');
 
         if(!foundGym){
@@ -19,7 +20,7 @@ const joinController = async(req,res)=>{
         }
         if(user.gym){
             console.log(user.gym);
-            return res.status(400).json({message:"User already joined a gym"});
+            return res.status(400).json({message:"User already joined a gym" , user});
         }
         user.gym = foundGym._id;
         await user.save();
@@ -130,9 +131,17 @@ const joinController = async(req,res)=>{
              `Welcome to ${foundGym.name}`,
              htmlContent
         );
+        const message = `Hi ${user.username}, you have successfully joined ${foundGym.name}. Welcome to the Preacher Clan!`;
+
+        await notificationService.sendNotification(
+             user,
+             message,
+             'info'
+
+        );
         const gym = await Gym.findById(foundGym._id).populate('members');
        
-        return res.status(200).json({message:"User joined gym successfully", user, gym});
+        return res.status(200).json({message:"User joined gym successfully",});
 
         
         

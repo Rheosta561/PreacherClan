@@ -1,4 +1,6 @@
 const user = require("../Models/User");
+const cron = require('node-cron'); 
+// Schedule the task to run every Monday at 00:00
 const updatePreacherScore = async(userId)=>{
     try {
         const userData = await user.findOne({_id:userId});

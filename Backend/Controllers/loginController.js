@@ -1,6 +1,7 @@
 const User = require('../Models/User');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+
 require('dotenv').config();
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -23,69 +24,70 @@ const sendEmail = async (to, subject, html) => {
     }
 };
 
+const jwt = require('jsonwebtoken');
+
 exports.login = async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ username });
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
 
-        if (!user) {
-            return res.status(404).json({ error: "User not found", code: "404" });
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ error: "Access Denied", code: "401" });
-        }
-
-        // Get login details
-        const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-        const device = `${req.useragent.platform} - ${req.useragent.browser}`;
-        const time = new Date().toLocaleString();
-
-        // Email content
-        const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; background: #f4f4f4; }
-                .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 10px; background: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-                .header { text-align: center; padding: 10px; background: #000000; color: white; border-radius: 10px 10px 0 0; }
-                .content { padding: 20px; color: #333; }
-                .footer { text-align: center; padding: 10px; font-size: 0.9rem; color: #888; border-top: 1px solid #ccc; margin-top: 20px; }
-                .logo { height: 50px; width: 50px; border-radius: 0.5rem; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
-                </div>
-                <div class="content">
-                    <p><b>Hi ${username},</b></p>
-                    <p>We noticed a new login to your <b>Preacher Clan</b> account.</p>
-                    <p><b>Login Details:</b></p>
-                    <p><b>Device:</b> ${device}</p>
-                    <p><b>IP Address:</b> ${ipAddress}</p>
-                    <p><b>Time:</b> ${time}</p>
-                    <hr>
-                    <p>If this was you, no further action is required.</p>
-                    <p>If you didn’t log in, please reset your password immediately.</p>
-                    <p>Stay safe and secure!</p>
-                    <p><b>Team Preacher Clan</b></p>
-                </div>
-            </div>
-        </body>
-        </html>`;
-
-        await sendEmail(user.email, "Login Alert", htmlContent);
-
-        return res.status(200).json({ user, message: "Access Granted" });
-
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+    if (!user) {
+      return res.status(404).json({ error: "User not found", code: "404" });
     }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Access Denied", code: "401" });
+    }
+
+    // Generate JWT token
+    
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+    // Get login details
+    const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    const device = `${req.useragent.platform} - ${req.useragent.browser}`;
+    const time = new Date().toLocaleString();
+
+    // Email content (unchanged)
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head> ... </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
+          </div>
+          <div class="content">
+            <p><b>Hi ${username},</b></p>
+            <p>We noticed a new login to your <b>Preacher Clan</b> account.</p>
+            <p><b>Login Details:</b></p>
+            <p><b>Device:</b> ${device}</p>
+            <p><b>IP Address:</b> ${ipAddress}</p>
+            <p><b>Time:</b> ${time}</p>
+            <hr>
+            <p>If this was you, no further action is required.</p>
+            <p>If you didn’t log in, please reset your password immediately.</p>
+            <p>Stay safe and secure!</p>
+            <p><b>Team Preacher Clan</b></p>
+          </div>
+        </div>
+      </body>
+      </html>`;
+
+    await sendEmail(user.email, "Login Alert", htmlContent);
+
+    // Exclude password from user object before sending
+    const { password: pwd, ...safeUser } = user.toObject();
+
+    return res.redirect(`http://localhost:5173/dashboard?token=${token}`);
+
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 };
+
 
 exports.signUp= async(req,res)=>{
     try {
@@ -213,9 +215,11 @@ exports.signUp= async(req,res)=>{
 
         `;
 
+        const token = jwt.sign({userId:newUser._id} , process.env.JWT_SECRET , {expiresIn : "7d"})
+
         await sendEmail(email, "Welcome to PreacherClan!", htmlContent);
 
-        res.status(200).json({user:newUser, message:"Registered Successfully"});
+        return res.redirect(`http://localhost:5173/dashboard?token=${token}`);
         
     } catch (error) {
         res.status(404).json({error:"Something went wrong" , message:"Something went wrong"});

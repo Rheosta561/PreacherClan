@@ -21,7 +21,7 @@ const storage = new CloudinaryStorage({
 
 // Create multer upload instance for multiple files
 const upload = multer({ storage: storage }).fields([
-    { name: 'image', maxCount: 1 },
+    { name: 'coverImage', maxCount: 1 },
     { name: 'profileImage', maxCount: 1 }
 ]);
 

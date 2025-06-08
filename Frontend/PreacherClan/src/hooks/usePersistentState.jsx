@@ -3,16 +3,32 @@ import { useState, useEffect } from 'react';
 
 export function usePersistentState(key, defaultValue) {
   const [value, setValue] = useState(() => {
-    // Load from localStorage first
-    const storedValue = localStorage.getItem(key);
-    return storedValue !== null
-      ? JSON.parse(storedValue)
-      : defaultValue;
+    try {
+      const storedValue = localStorage.getItem(key);
+      if (storedValue !== null) {
+        const parsed = JSON.parse(storedValue);
+
+        // Check if the parsed value matches the type of the default
+        if (
+          typeof parsed === typeof defaultValue &&
+          !(Array.isArray(defaultValue) && !Array.isArray(parsed)) // prevent mismatched arrays
+        ) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to load key "${key}" from localStorage:`, error);
+    }
+
+    return defaultValue;
   });
 
   useEffect(() => {
-    // Save to localStorage when value changes
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.warn(`Failed to save key "${key}" to localStorage:`, error);
+    }
   }, [key, value]);
 
   return [value, setValue];

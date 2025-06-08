@@ -1,5 +1,6 @@
 import React from "react";
 import { Dumbbell, User, Wallet2, MapPin, Star } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 function GymInfoCard({ gym }) {
   const {
@@ -14,6 +15,10 @@ function GymInfoCard({ gym }) {
     featured,
     onJoin,
   } = gym;
+  const navigate = useNavigate();
+  const handleClick = ()=>{
+    navigate(`/join/gym/${gym.gymId}`)
+  }
 
   return (
     <div className="bg-zinc-950 border border-zinc-800 rounded-xl overflow-hidden shadow-lg w-[380px] max-w-md">
@@ -85,7 +90,7 @@ function GymInfoCard({ gym }) {
 
         {/* Join Button */}
         <button
-          onClick={onJoin}
+          onClick={handleClick}
           className="w-full py-2 rounded-md bg-zinc-50 hover:bg-zinc-900 text-zinc-950 hover:text-white text-sm font-semibold transition"
         >
           Join Now

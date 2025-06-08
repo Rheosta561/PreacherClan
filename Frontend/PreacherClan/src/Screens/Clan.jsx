@@ -5,14 +5,67 @@ import GymCapacity from '../Components/GymCapacity';
 import InsightCard from '../Components/InsightCard';
 import ProfileCard from '../Components/ProfileCard';
 import Features from '../Components/Features';
+import { Navbar } from '@heroui/react';
+import StreakMarker from '../Components/StreakMarker';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function Clan() {
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [gym , setGym] = useState({});
+  const [User,setUser] = useState({});
+  const [members , setMembers] = useState([])
+  const [ isMember , setIsMember] = useState(true);
+  const navigate = useNavigate();
 
-  const members = [
+useEffect(() => {
+  const fetchGym = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user || !user.gym) {
+        navigate('/login');
+        return; 
+      }
+      setUser(user);
+
+      const gymId = user.gym;
+      if(!gymId){
+        setIsMember(true);
+
+      }
+
+      
+      const sessionGym = JSON.parse(sessionStorage.getItem('userGym'));
+
+      if (sessionGym && sessionGym._id === gymId) {
+        console.log('Using gym from sessionStorage');
+        setGym(sessionGym);
+        setMembers(sessionGym.members);
+      } else {
+        // Fetch from API
+        const response = await axios.get(`http://localhost:3000/gym/gym/${gymId}`);
+        console.log('Fetched from API:', response.status);
+
+        const foundGym = response.data;
+
+        setGym(foundGym.gym); // Update state
+        sessionStorage.setItem('userGym', JSON.stringify(foundGym.gym)); // Store for future
+      }
+    } catch (error) {
+      console.error('Error fetching gym:', error);
+    }
+  };
+
+  fetchGym();
+}, [navigate]);
+console.log(members)
+
+  
+
+  const dummyMembers = [
     { name: "Aarav Singh", age: 26, goal: "Build Muscle", time: "6:00 AM - 8:00 AM", tags: ["hypertrophy", "discipline", "early riser", "creatine"], image: "https://images.unsplash.com/photo-1676491167770-bce474fe0024?w=1200&auto=format&fit=crop&q=60", preacherRank: "Elite Preacher", isVerified: true },
     { name: "Jane Smith", age: 28, goal: "Weight Loss", time: "6:00 AM - 8:00 AM", tags: ["cardio", "HIIT", "dedicated", "healthy"], image: "https://images.unsplash.com/photo-1507034589631-9433cc6bc453?w=1400&auto=format&fit=crop&q=60", preacherRank: "Elite Preacher", isVerified: true },
     { name: "Erik Thorvald", age: 30, goal: "Endurance", time: "7:00 AM - 9:00 AM", tags: ["long runs", "stamina", "battle ready", "focus"], image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=1200&auto=format&fit=crop&q=60", preacherRank: "Viking Warrior", isVerified: true },
@@ -21,11 +74,45 @@ function Clan() {
     { name: "Astrid Helga", age: 25, goal: "Weight Loss", time: "6:30 AM - 8:30 AM", tags: ["HIIT", "cardio", "dedicated", "nutrition"], image: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=1200&auto=format&fit=crop&q=60", preacherRank: "Viking Runner", isVerified: true },
     { name: "Bjorn Ironside", age: 35, goal: "Powerlifting", time: "7:00 AM - 9:00 AM", tags: ["powerlifting", "strength", "discipline", "focus"], image: "https://images.unsplash.com/photo-1508214751195-bcfd4ca60f92?w=1200&auto=format&fit=crop&q=60", preacherRank: "Viking Warrior", isVerified: false },
   ];
+    const mapMemberToProfileCard = (member) => {
+  return {
+    image: member.profile?.profileImage || '', 
+    id : member._id,  
+    name: member.name,
+    age: '',                                    
+    goal: member.profile?.fitnessGoals?.join(', ') || '',
+    time: 'Anytime',                            
+    tags: member.profile?.fitnessGoals || [],
+    preacherRank: member.preacherScore ? `PR: ${member.preacherScore}` : '',
+    isVerified: member.isVerified
+  };
+};
+  const transformedMembers = members.map(mapMemberToProfileCard);
 
   // Filter members by search term (case insensitive)
-  const filteredMembers = members.filter(member =>
-    member.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+ const filterMembers = (members, searchTerm) => {
+  if (!searchTerm.trim()) return members; // If search empty, return all
+
+  const lowerSearch = searchTerm.toLowerCase();
+  const searchWords = lowerSearch.split(/\s+/); // Split by spaces
+
+  return transformedMembers.filter(member => {
+    const name = member.name?.toLowerCase() || "";
+    const goal = member.goal?.toLowerCase() || "";
+    const preacherRank = member.preacherRank?.toLowerCase() || "";
+    const tags = member.tags?.map(tag => tag.toLowerCase()).join(" ") || "";
+
+    // Combine all searchable fields
+    const combined = `${name} ${goal} ${preacherRank} ${tags}`;
+
+    // All words in search should match somewhere
+    return searchWords.every(word => combined.includes(word));
+  });
+};
+
+const filteredMembers = filterMembers(transformedMembers, searchTerm);
+
+
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -65,28 +152,40 @@ function Clan() {
     setActiveIndex(i);
   };
 
+
+  const now = new Date();
+
+
+const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+
+
+const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+
   return (
     <div className='bg-zinc-950 min-h-screen p-2 text-white'>
+      <Navbar/>
       <BottomRow />
       <br />
       <br />
       <br />
 
       <div className="text-white space-y-2">
-        <h1 className="text-2xl font-semibold">Pack Physique</h1>
+        <h1 className="text-2xl font-semibold">{gym.name}</h1>
         <div className="flex items-center text-sm text-zinc-400 gap-2">
           <MapPin className="w-4 h-4 text-red-400" />
-          <span>Mumbai, India</span>
+          <span>{gym.location}, India</span>
         </div>
       </div>
       <br />
       <div className="flex flex-col  md:flex-row gap-4">
         <GymCapacity
-          day="Monday"
-          date="Jun 10"
-          preachersCount={10}
-          capacityPercent={35}
-          currentCapacity={9}
+          day={day}
+          date={date}
+          preachersCount={members.length}
+          capacityPercent={20}
+          currentCapacity={20}
+          maxCapacity={100}
         />
         <InsightCard
           title="Daily Insight"
@@ -95,6 +194,7 @@ function Clan() {
           imageUrl="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
           imageAlt="Motivational sunrise"
         />
+        <StreakMarker/>
       </div>
       <br />
 

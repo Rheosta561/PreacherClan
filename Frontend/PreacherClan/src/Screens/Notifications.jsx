@@ -2,6 +2,7 @@ import React from "react";
 import { Bell, ShieldCheck, XCircle, Trash2 } from "lucide-react";
 import { useNotification } from "../context/NotificationContext"; // adjust the path if needed
 import BottomRow from "../Components/bottomRow";
+import { Navbar } from "@heroui/react";
 
 function Notifications() {
   const { notifications, setNotifications } = useNotification();
@@ -14,6 +15,7 @@ function Notifications() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white px-4 py-6">
+      <Navbar/>
       <BottomRow/>
       <div className="flex items-center justify-between mb-6 mt-16">
         <div className="flex items-center gap-2">

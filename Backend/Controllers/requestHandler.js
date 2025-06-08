@@ -1,5 +1,10 @@
 const User = require("../Models/User");
 const Request = require("../Models/Requests");
+const notificationService = require("../Utils/NotificationService");
+const {sendMatchNotification} = require("../Utils/matchService");
+const path = require("path");
+const Profile = require("../Models/Profile");
+const Gym = require("../Models/GymSchema");
 
 
 exports.requestAccepter = async(req,res) =>{
@@ -17,12 +22,26 @@ exports.requestAccepter = async(req,res) =>{
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
-        return res.status(200).json({ message: "Request accepted successfully", user });
+        // Send notification to the user
+        const partner = await User.findById(request.sender);
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" });
+        }
+        partner.partner.push(userId);
+        await partner.save();
+        const message = `🪓 Hail! ${user.name} has answered your call. Destiny binds you now — begin your saga in chat! 🔥`;
+        await notificationService.sendNotification(partner, message, "info");
+
+        // Send match notification to the user
+        await sendMatchNotification( partner , user );
+        return res.status(200).json({ message: "Request accepted successfully", user , request });
 
 
         
     } catch (error) {
+        console.error("Error in requestAccepter:", error);
         return res.status(500).json({ message: "Internal server error", error: error.message });
+        
 
         
     }
@@ -76,13 +95,17 @@ exports.requestSender = async(req,res) =>{
             receiver: partnerId,
             status: "pending"
         });
+        const message = `🪓 Hail! Request Sent Successfully to ${partner.name}`;
+        await notificationService.sendNotification(user, message, "info");
+        const partnerMessage = `🪓 Hail! You have a new request from ${user.name}`;
+        await notificationService.sendNotification(partner, partnerMessage, "info" );
         
         if (!request) {
             return res.status(404).json({ message: "Request not created" });
         }
         
         
-        return res.status(200).json({ message: "Request sent successfully", user });
+        return res.status(200).json({ message: "Request sent successfully", user , request });
 
         
     } catch (error) {
@@ -92,25 +115,63 @@ exports.requestSender = async(req,res) =>{
     }
 }   
 
-exports.getRequests = async(req,res) =>{
-    try {
-        const {userId} = req.params;
-        const requests = await Request.find({
-            receiver: userId,
-            status: "pending"
-        }).populate('sender');
-        
-        if (!requests) {
-            return res.status(404).json({ message: "No requests found" });
-        }
-        
-        return res.status(200).json({ requests });
+exports.getRequests = async (req, res) => {
+  try {
+    const { userId } = req.params;
 
-        
-    } catch (error) {
-        return res.status(500).json({ message: "Internal server error", error: error.message });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-        
-    }
-}
+    const requests = await Request.find({
+      $or: [{ sender: userId }, { receiver: userId }],
+      status: "pending"
+    })
+      .populate({
+        path: 'sender',
+        populate: { path: 'profile' }
+      })
+      .populate({
+        path: 'receiver',
+        populate: { path: 'profile' }
+      })
+      .lean(); 
+    // Format each request with sender and receiver's user+profile
+    const formattedRequests = await Promise.all(
+      requests.map(async (request) => {
+        const senderUser = await User.findById(request.sender._id).lean();
+        const userGym = await Gym.findById(senderUser.gym).lean();
+        const userGymName = userGym ? userGym.name : "";
+        const receiverGym = await Gym.findById(request.receiver.gym).lean();
+        const receiverGymName = receiverGym ? receiverGym.name : "";
+        const receiverUser = await User.findById(request.receiver._id).lean();
+
+        return {
+          _id: request._id,
+          status: request.status,
+          createdAt: request.createdAt,
+
+          sender: {
+            user: senderUser,
+            profile: request.sender.profile,
+            gym: userGymName,
+
+          },
+
+          receiver: {
+            user: receiverUser,
+            profile: request.receiver.profile,
+            gym: receiverGymName,
+          }
+        };
+      })
+    );
+
+    return res.status(200).json({ requests: formattedRequests });
+
+  } catch (error) {
+    console.error("Error in getRequests:", error);
+    return res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
 

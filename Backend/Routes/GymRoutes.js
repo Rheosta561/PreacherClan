@@ -3,7 +3,9 @@ const router = express.Router();
 const Gym = require('../Models/GymSchema');
 const { upload } = require('../config/cloudinary');
 const User = require('../Models/User');
-
+const updatePreacherScore = require('../Utils/updatePreacherScore');
+const notificationService = require('../Utils/NotificationService');
+const {updateStreak} = require('../Utils/updateStreak');
 router.post('/create', upload, async (req, res) => {
     try {
         const { name, location, description, rating, reviews, facilities, equipment, membership, members, trainers, owner } = req.body;
@@ -80,5 +82,51 @@ router.get('/all', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
+router.get('/streak/:gymCode/:userId' , async(req,res)=>{
+    try {
+        const { gymCode } = req.params;
+        const userId = req.params.userId;
+        const gym = await Gym.findOne({ gymCode }).populate('members');
+        if (!gym) {
+            return res.status(404).json({ message: "Gym not found" });
+        }
+        const isMember = gym.members.some(member => member._id.toString() === userId);
+        if (!isMember) {
+            return res.status(403).json({ message: "You are not a member of this gym" });
+        }
+        const currStreak = await updateStreak(userId);
+        return res.status(200).json({message : "Streak updated" , gym  , currStreak:'' + currStreak});
+;
+
+        
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+        
+    }
+} );
+
+router.get('/gym/:gymId', async (req, res) => {
+    try {
+        
+        const gym = await Gym.findOne({ _id: req.params.gymId })
+            .populate({
+                path: 'members',
+                populate: { path: 'profile' }
+            });
+
+        if (!gym) {
+            return res.status(404).json({ message: "Gym Not Found" });
+        }
+
+        return res.status(200).json({ gym });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Something went wrong", error: error.message });
+    }
+});
+
+
 
 module.exports = router;
