@@ -69,7 +69,7 @@ router.get("/:userId", async (req, res) => {
 router.put("/:userId", upload, async (req, res) => {
   try {
     const profileImageUrl = req.files?.profileImage?.[0]?.path;
-    const coverImageUrl = req.files?.image?.[0]?.path;
+    const coverImageUrl = req.files?.coverImage?.[0]?.path;
 
     // Safely parse array fields from stringified values
     const fitnessGoals = JSON.parse(req.body.fitnessGoals || "[]");
