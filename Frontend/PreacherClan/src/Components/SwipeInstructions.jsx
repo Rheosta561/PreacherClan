@@ -18,7 +18,7 @@ const SwipeInstructions = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.5 }}
-          className="absolute top-1/2 w-72  left-1/2 right-1/2 -ml-36 -translate-x-1/2  bg-opacity-90 text-white px-5 py-2 rounded-full shadow-lg text-sm select-none z-50"
+          className="absolute top-1/2 w-72  left-1/2 right-1/2 -ml-36 -translate-x-1/2  bg-opacity-90 text-white px-5 py-2 rounded-full shadow-lg text-sm select-none z-10"
         >
             <div className=" text-2xl font-semibold">
                 Swipe Left for Request
