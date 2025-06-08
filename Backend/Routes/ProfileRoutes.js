@@ -10,7 +10,7 @@ const {emitProfileUpdate} = require('../Utils/profileUpdated');
 router.post("/:userId", upload, async (req, res) => {
   try {
     const profileImageUrl = req.files?.profileImage?.[0]?.path || null;
-    const coverImageUrl = req.files?.image?.[0]?.path || null;
+    const coverImageUrl = req.files?.coverImage?.[0]?.path || null;
 
     // Parse stringified arrays (safely fallback to [])
     const fitnessGoals = JSON.parse(req.body.fitnessGoals || "[]");
