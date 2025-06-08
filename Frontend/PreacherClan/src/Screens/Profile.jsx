@@ -4,7 +4,7 @@ import MileStoneCard from "../Components/MileStoneCard";
 import UserGoalCard from "../Components/UserGoalCard";
 import GymCard from "../Components/GymCard";
 import RepMateCard from "../Components/RepMateCard";
-import RepMate from "../assets/RepMate.png";
+import RepMate from "../assets/repmate.png";
 import BottomRow from "../Components/BottomRow";
 import { useNavigate } from "react-router-dom";
 
