@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X } from "lucide-react";
 import ProfileCard from "../Components/ProfileCard"; // make sure this path is correct
 import GymInfoCard from "../Components/GymInfoCard"; // make sure this path is correct
-import BottomRow from "../Components/bottomRow";
+import BottomRow from "../Components/BottomRow";
 
 const mockGyms = [
   {

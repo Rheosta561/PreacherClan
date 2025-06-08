@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import BottomRow from '../Components/bottomRow';
+import BottomRow from '../Components/BottomRow';
 import { MapPin } from "lucide-react";
 import GymCapacity from '../Components/GymCapacity';
 import InsightCard from '../Components/InsightCard';

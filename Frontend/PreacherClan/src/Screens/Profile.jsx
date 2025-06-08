@@ -5,7 +5,7 @@ import UserGoalCard from "../Components/UserGoalCard";
 import GymCard from "../Components/GymCard";
 import RepMateCard from "../Components/RepMateCard";
 import RepMate from "../assets/RepMate.png";
-import BottomRow from "../Components/bottomRow";
+import BottomRow from "../Components/BottomRow";
 import { useNavigate } from "react-router-dom";
 
 function Profile() {

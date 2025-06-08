@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import BottomRow from "../Components/bottomRow";
+import BottomRow from "../Components/BottomRow";
 import repmate from "../assets/repmate.png";
 import GymBuddyCard from "../Components/GymBuddyCard";
 import SwipeInstructions from "../Components/SwipeInstructions";

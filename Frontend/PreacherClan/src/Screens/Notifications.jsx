@@ -1,7 +1,7 @@
 import React from "react";
 import { Bell, ShieldCheck, XCircle, Trash2 } from "lucide-react";
 import { useNotification } from "../context/NotificationContext"; // adjust the path if needed
-import BottomRow from "../Components/bottomRow";
+import BottomRow from "../Components/BottomRow";
 import { Navbar } from "@heroui/react";
 
 function Notifications() {
