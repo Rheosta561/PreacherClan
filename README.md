@@ -10,6 +10,7 @@
 ## 📖 Project Description
 
 This is the centralized repository for the **PreacherClan** web application. It serves as the main source of truth for the project, encompassing all code, documentation, and related resources. This repository aims to facilitate collaboration, version control, and consistent development practices for the PreacherClan ecosystem.
+**Developed By : Anubhav Mishra (Rheosta561)**
 
 ---
 
