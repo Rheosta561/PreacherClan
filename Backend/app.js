@@ -14,7 +14,11 @@ const requests = require('./Models/Requests');
 const repmateRouter = require('./Routes/RepmateRouter');
 const {initSocket} = require('./socket');
 initSocket(server);
+const client = require('./Connection/RedisConnection');
+
 const NotificationRouter = require('./Routes/NotificationRouter');
+const chatRouter = require('./Routes/ChatRoutes');
+const messageRouter = require('./Routes/MessageRoutes');
 
 // const deleteRequests = async(req,res)=>{
 //     try {
@@ -62,6 +66,9 @@ app.use('/requests' , requestHandlerRouter);
 app.use('/user', userRouter);
 app.use('/notifications', NotificationRouter);
 app.use('/repmate' , repmateRouter); 
+
+app.use('/chat', chatRouter);
+app.use('/message' ,messageRouter );
 
 
 const port = process.env.PORT || 3000 ;
