@@ -38,14 +38,23 @@ const sendMessage = async (req, res) => {
         });
       }
     }
+    let mediaFiles = req.files || [];
+    console.log('received files')
+    console.log(mediaFiles);
+
+
 
     // Process media uploads if any
-    const mediaFiles = req.files || [];
-    const media = mediaFiles.map((file) => ({
-      public_id: file.filename,
-      url: file.path,
-      type: file.mimetype.split('/')[0],
-    }));
+
+  const media = mediaFiles.map(file => ({
+  public_id: file.filename, 
+  url: file.path,            
+  type: file.mimetype.startsWith('image') ? 'image' :
+        file.mimetype.startsWith('video') ? 'video' :
+        file.mimetype.startsWith('audio') ? 'audio' :
+        'file'
+}));
+console.log(media);
 
     // Create message
     const newMessage = await Message.create({
@@ -53,30 +62,42 @@ const sendMessage = async (req, res) => {
       chat: chat._id,
       messageType,
       content,
-      media,
+      media : JSON.stringify(media),
     });
 
     
     chat.latestMessage = newMessage._id;
+
     await chat.save();
+   
 
     const populatedMessage = await newMessage.populate('sender', 'username _id');
 
 
     const io = getIo();
+
     const fullChat = await chat.populate('participants', '_id username');
+    console.log(fullChat);
 
     for (const user of fullChat.participants) {
       const socketId = onlineUsers.get(user._id.toString());
-      if (socketId && user._id.toString() !== sender.toString()) {
-        sendNotification(user, `New message from ${foundUser.name}`, 'info');
-        io.to(socketId).emit('newMessage', populatedMessage);
+      console.log(user);
+      if (user._id.toString() !== sender.toString()) {
+        console.log(user);
+        const foundUser = await User.findOne({_id:user._id});
+        
+        sendNotification(foundUser, `New message from ${foundUser.name}`, 'info');
+        if(socketId){
+             io.to(socketId).emit('newMessage', populatedMessage);
+
+        }
+       
       }
     }
 
     res.status(201).json(populatedMessage);
   } catch (err) {
-    console.error('sendMessage error:', err);
+    console.log('sendMessage error:', err);
     res.status(500).json({ error: 'Failed to send message' });
   }
 };

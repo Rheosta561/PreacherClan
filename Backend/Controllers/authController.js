@@ -13,7 +13,8 @@ exports.googleAuthCallback = (req, res, next) => {
       }
   
 
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" })
+
   
 
       return res.redirect(`https://preacherclan.vercel.app/dashboard?token=${token}`);
