@@ -1,8 +1,29 @@
-import React, { useState } from "react";
+import React, { useState , useEffect} from "react";
 import { MoreVertical, MessageCircle, BellRing, UserX } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-function RepMateCard({ name, location, image }) {
+function RepMateCard({ name, location, image , receiverId}) {
   const [open, setOpen] = useState(false);
+  const [user,setUser]= useState(null);
+
+
+  const navigate = useNavigate();
+  useEffect(() => {
+    const fetchUser=()=>{
+      const localUser = JSON.parse(localStorage.getItem('user'));
+      if(!localUser){
+        navigate('/login ');
+
+      }
+      setUser(localUser);
+    }
+    fetchUser();
+    
+  }, [])
+  const handleChatClick = () =>{
+    navigate(`/chat/${user._id}/${receiverId}`);
+  }
+  
 
   return (
     <div className="relative flex flex-row-reverse items-center justify-between gap-4 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
@@ -15,15 +36,15 @@ function RepMateCard({ name, location, image }) {
         {/* Dropdown */}
         {open && (
           <div className="absolute right-0 top-8 z-10 w-40 bg-zinc-800 text-sm rounded-md shadow-lg border border-zinc-700">
-            <button className="w-full flex items-center px-3 py-2 hover:bg-zinc-700 text-left" onClick={() => alert("Chat started")}>
+            <button className="w-full flex items-center px-3 py-2 hover:bg-zinc-700 text-left" onClick={handleChatClick}>
               <MessageCircle className="w-4 h-4 mr-2" /> Chat
             </button>
-            <button className="w-full flex items-center px-3 py-2 hover:bg-zinc-700 text-left" onClick={() => alert("Reminder sent")}>
+            {/* <button className="w-full flex items-center px-3 py-2 hover:bg-zinc-700 text-left" onClick={() => alert("Reminder sent")}>
               <BellRing className="w-4 h-4 mr-2" /> Remind
-            </button>
-            <button className="w-full flex items-center px-3 py-2 hover:bg-zinc-700 text-left text-red-400" onClick={() => alert("Unfriended")}>
+            </button> */}
+            {/* <button className="w-full flex items-center px-3 py-2 hover:bg-zinc-700 text-left text-red-400" onClick={() => alert("Unfriended")}>
               <UserX className="w-4 h-4 mr-2" /> Unfriend
-            </button>
+            </button> */}
           </div>
         )}
       </div>

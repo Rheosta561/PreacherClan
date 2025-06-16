@@ -19,17 +19,25 @@ import { ProfileProvider } from './context/ProfileContext';
 import Onboarding from './Screens/Onboarding';
 import { MatchProvider } from './context/MatchContext';
 import MatchListener from './Components/MatchListener';
+import Chats from './Screens/Chats';
+import ChatScreen from './Screens/ChatScreen';
+import { ChatProvider } from './context/ChatContext';
+import ChatListener from './Components/ChatListener';
 
 function App() {
   return (
     <NotificationProvider>
       <ProfileProvider>
+        <ChatProvider>
         <MatchProvider>
+          
         <NotificationListener />
         <ProfileListener />
+        <ChatListener/>
         <MatchListener/>
 
         <BrowserRouter>
+        
           <Toaster
             position="top-center"
             theme="dark"
@@ -59,10 +67,18 @@ function App() {
               <Route path='/profile' element={<Profile />} />
               <Route path='/search' element={<SearchScreen />} />
               <Route path='/clan/:clanId' element={<Clan />} />
+              <Route path = '/chats' element={<Chats/>} />
+              <Route path = '/chat' element = {<ChatScreen/>} />
+              <Route path = '/chat/:userId/:receiverId' element={<ChatScreen/>}/>
             </Route>
           </Routes>
+          
         </BrowserRouter>
+
+
+
         </MatchProvider>
+        </ChatProvider>
       </ProfileProvider>
     </NotificationProvider>
   );

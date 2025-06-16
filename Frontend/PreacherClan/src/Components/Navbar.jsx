@@ -31,6 +31,7 @@ function Navbar() {
     setIsOpen(false);
     navigate(path);
   };
+  
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -79,6 +80,10 @@ function Navbar() {
     navigate("/login");
   }
 
+  const handleChatClick = ()=>{
+    navigate('/chats');
+  }
+
   
 
   const { notifications } = useNotification(); // 👈 Use notifications from context
@@ -88,9 +93,7 @@ function Navbar() {
       <div className="max-w-screen-xl mx-auto flex items-center justify-between px-4 py-4">
         {/* Left: Logo & Avatar */}
         <Link to="/profile" className="flex items-center space-x-3">
-          <div className="p-1 rounded-full bg-zinc-950">
-            <MessageSquare size={22} className="text-zinc-300" />
-          </div>
+          
           <img
             src={ profile.profileImage || "https://via.placeholder.com/150"}
             alt="Avatar"
@@ -98,6 +101,7 @@ function Navbar() {
           />
           <p className="text-zinc-300 text-xs">Hi {user?.name || ""}</p>
         </Link>
+        
 
         {/* Right: Notification + Hamburger */}
         <div className="flex items-center space-x-4">
@@ -113,6 +117,9 @@ function Navbar() {
                 {notifications.length > 9 ? "9+" : notifications.length}
               </span>
             )}
+          </div>
+          <div className="p-1 rounded-full bg-zinc-950">
+            <MessageSquare size={22} className="text-zinc-300" onClick={handleChatClick} />
           </div>
 
           {/* Hamburger (Mobile) */}

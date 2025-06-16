@@ -1,0 +1,102 @@
+// src/context/ChatContext.jsx
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
+import VikingToast from '../Components/VikingToast';
+
+const ChatContext = createContext();
+
+export const ChatProvider = ({ children }) => {
+  const [socket, setSocket] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [toast, setToast] = useState({ visible: false, message: '' });
+  const socketRef = useRef(null);
+  const userId = JSON.parse(localStorage.getItem('user'))._id;
+    if (!userId) return;
+    const safeParseMedia = (mediaArray) => {
+  try {
+    if (!Array.isArray(mediaArray)) return [];
+    return mediaArray.flatMap((m) => {
+      if (typeof m === 'string') return JSON.parse(m);
+      return [m];
+    });
+  } catch (err) {
+    console.warn('Failed to parse media:', err.message);
+    return [];
+  }
+};
+
+const parseSocketMessage = (msg, userId, profileImage) => {
+  const media = safeParseMedia(msg.media);
+
+  const base = {
+    id: msg._id,
+    text: msg.content,
+    sender: msg.sender._id === userId ? 'me' : 'other',
+    timestamp: msg.createdAt || new Date(),
+    profileImage: msg.sender._id === userId ? profileImage : 'https://i.pravatar.cc/40?img=7',
+    replyTo: msg.replyTo || null,
+  };
+
+  media.forEach((m) => {
+    if (m.type === 'image') base.image = m.url;
+    else if (m.type === 'video') base.video = m.url;
+    else if (m.type === 'audio') base.audio = m.url;
+    else base.file = m.url;
+
+    base.fileName = m.fileName || m.url?.split('/').pop();
+  });
+
+  return base;
+};
+
+ 
+
+  useEffect(() => {
+    
+    console.log('hit socket')
+
+   const socket = io('http://localhost:3000'); 
+   socketRef.current=socket
+
+
+
+
+    setSocket(socket);
+
+    socket.emit('userOnline', userId);
+
+    socket.on('newMessage', (msg) => {
+      console.log('📥 New message received:', msg);
+      const formattedMessage = parseSocketMessage(msg, userId , '');
+      console.log('Formatted Message' , formattedMessage);
+      setMessages((prev) => [...prev, formattedMessage]);
+      setToast({ visible: true, message: `New message from ${msg.sender.username}` });
+    });
+
+    socket.on('messageDeleted', ({ messageId }) => {
+
+      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+    });
+
+    return () => socket.disconnect();
+  }, [userId]);
+
+  const sendMessage = (msg) => {
+    if (!socket) return;
+    socket.emit('sendMessage', msg);
+  };
+
+  return (
+    <ChatContext.Provider value={{ socket, messages, setMessages, sendMessage }}>
+      {children}
+      <VikingToast
+        visible={toast.visible}
+        message={toast.message}
+        onClose={() => setToast({ visible: false, message: '' })}
+      />
+    </ChatContext.Provider>
+  );
+};
+
+
+export const useChat = () => useContext(ChatContext);

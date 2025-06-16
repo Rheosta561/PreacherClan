@@ -352,6 +352,8 @@ const handleSave = async () => {
           {user.partner.map((mate)=>(
             <RepMateCard
               key={mate._id}
+              receiverId = {mate._id}
+
               name={mate.name}
               location={mate.location}
               image={mate.profileImage || "https://img.freepik.com/free-vector/viking-warrior-with-raven_43623-950.jpg?uid=R156956613&ga=GA1.1.1904776371.1723148990&semt=ais_hybrid&w=740"}
