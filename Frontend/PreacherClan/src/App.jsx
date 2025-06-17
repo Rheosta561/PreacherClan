@@ -68,8 +68,9 @@ function App() {
               <Route path='/search' element={<SearchScreen />} />
               <Route path='/clan/:clanId' element={<Clan />} />
               <Route path = '/chats' element={<Chats/>} />
-              <Route path = '/chat' element = {<ChatScreen/>} />
+              <Route path = '/chat/:chatId' element = {<ChatScreen/>} />
               <Route path = '/chat/:userId/:receiverId' element={<ChatScreen/>}/>
+
             </Route>
           </Routes>
           

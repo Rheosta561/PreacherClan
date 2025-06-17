@@ -1,4 +1,3 @@
-// src/context/ChatContext.jsx
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import VikingToast from '../Components/VikingToast';
@@ -10,71 +9,66 @@ export const ChatProvider = ({ children }) => {
   const [messages, setMessages] = useState([]);
   const [toast, setToast] = useState({ visible: false, message: '' });
   const socketRef = useRef(null);
-  const userId = JSON.parse(localStorage.getItem('user'))._id;
-    if (!userId) return;
-    const safeParseMedia = (mediaArray) => {
-  try {
-    if (!Array.isArray(mediaArray)) return [];
-    return mediaArray.flatMap((m) => {
-      if (typeof m === 'string') return JSON.parse(m);
-      return [m];
-    });
-  } catch (err) {
-    console.warn('Failed to parse media:', err.message);
-    return [];
-  }
-};
 
-const parseSocketMessage = (msg, userId, profileImage) => {
-  const media = safeParseMedia(msg.media);
+  const storedUser = localStorage.getItem('user');
+  const parsedUser = storedUser ? JSON.parse(storedUser) : null;
 
-  const base = {
-    id: msg._id,
-    text: msg.content,
-    sender: msg.sender._id === userId ? 'me' : 'other',
-    timestamp: msg.createdAt || new Date(),
-    profileImage: msg.sender._id === userId ? profileImage : 'https://i.pravatar.cc/40?img=7',
-    replyTo: msg.replyTo || null,
+  const userId = parsedUser?._id;
+  const profileImage = parsedUser?.image || '';
+
+  const safeParseMedia = (mediaArray) => {
+    try {
+      if (!Array.isArray(mediaArray)) return [];
+      return mediaArray.flatMap((m) => {
+        if (typeof m === 'string') return JSON.parse(m);
+        return [m];
+      });
+    } catch (err) {
+      console.warn('Failed to parse media:', err.message);
+      return [];
+    }
   };
 
-  media.forEach((m) => {
-    if (m.type === 'image') base.image = m.url;
-    else if (m.type === 'video') base.video = m.url;
-    else if (m.type === 'audio') base.audio = m.url;
-    else base.file = m.url;
+  const parseSocketMessage = (msg, userId, profileImage) => {
+    const media = safeParseMedia(msg.media);
 
-    base.fileName = m.fileName || m.url?.split('/').pop();
-  });
+    const base = {
+      id: msg._id,
+      text: msg.content,
+      sender: msg.sender._id === userId ? 'me' : 'other',
+      timestamp: msg.createdAt || new Date(),
+      profileImage: msg.sender._id === userId ? profileImage : 'https://i.pravatar.cc/40?img=7',
+      replyTo: msg.replyTo || null,
+    };
 
-  return base;
-};
+    media.forEach((m) => {
+      if (m.type === 'image') base.image = m.url;
+      else if (m.type === 'video') base.video = m.url;
+      else if (m.type === 'audio') base.audio = m.url;
+      else base.file = m.url;
 
- 
+      base.fileName = m.fileName || m.url?.split('/').pop();
+    });
+
+    return base;
+  };
 
   useEffect(() => {
-    
-    console.log('hit socket')
+    if (!userId) return;
 
-   const socket = io('http://localhost:3000'); 
-   socketRef.current=socket
-
-
-
-
+    const socket = io('http://localhost:3000');
+    socketRef.current = socket;
     setSocket(socket);
 
     socket.emit('userOnline', userId);
 
     socket.on('newMessage', (msg) => {
-      console.log('📥 New message received:', msg);
-      const formattedMessage = parseSocketMessage(msg, userId , '');
-      console.log('Formatted Message' , formattedMessage);
+      const formattedMessage = parseSocketMessage(msg, userId, profileImage);
       setMessages((prev) => [...prev, formattedMessage]);
       setToast({ visible: true, message: `New message from ${msg.sender.username}` });
     });
 
     socket.on('messageDeleted', ({ messageId }) => {
-
       setMessages((prev) => prev.filter((m) => m._id !== messageId));
     });
 
@@ -97,6 +91,5 @@ const parseSocketMessage = (msg, userId, profileImage) => {
     </ChatContext.Provider>
   );
 };
-
 
 export const useChat = () => useContext(ChatContext);

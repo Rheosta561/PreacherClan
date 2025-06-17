@@ -7,8 +7,12 @@ function ChatCard({
   profileImage,
   isGroup = false,
   participants = [],
-  unreadCount = 0
+  unreadCount = 0,
+  onclick,
+  sender
 }) {
+
+
   // Format participant string like: You, Bjorn, +2 more
   const getParticipantPreview = () => {
     const visible = participants.slice(0, 2);
@@ -19,8 +23,13 @@ function ChatCard({
       : visible.join(', ');
   };
 
+  const userId = JSON.parse(localStorage.getItem('user'))._id;
+  console.log(userId)
+  const senderTag = userId!=sender ? `` : 'You';
+  
+
   return (
-    <div className="flex items-center justify-between p-4 border-b border-zinc-800 hover:bg-zinc-900 cursor-pointer transition-colors">
+    <div className="flex items-center justify-between p-4 border-b border-zinc-800 hover:bg-zinc-900 cursor-pointer transition-colors" onClick={onclick}>
       
       {/* Left side: Avatar + Info */}
       <div className="flex items-center gap-4">
@@ -39,7 +48,7 @@ function ChatCard({
             </span>
           ) : (
             <span className="text-zinc-400 text-sm truncate max-w-[200px]">
-              {latestMessage}
+             <span className='text-zinc-500 font-semibold'>{senderTag?`${senderTag}` : 'Preacher' }</span>  | {latestMessage}
             </span>
           )}
         </div>

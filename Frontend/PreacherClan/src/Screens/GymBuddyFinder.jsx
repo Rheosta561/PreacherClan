@@ -237,6 +237,7 @@ const handleSwipe = async(direction) => {
         className: "bg-green-700 text-white border border-green-800 shadow-lg",
       });
       setRequests((prev) => prev.filter((req) => req._id !== requestId));
+      localStorage.setItem('user' , response.data.user);
       
     } else {
       toast.error("Failed to accept request. Please try again.", {

@@ -7,26 +7,26 @@ export const MatchProvider = ({ children }) => {
   const [match, setMatch] = useState(null);
   const socketRef = useRef(null);
 
+  const storedUser = localStorage.getItem('user');
+  const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+  const userId = parsedUser?._id;
+
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    const userId = user ? JSON.parse(user)?._id : null;
+    if (!userId) return;
 
-    if (!userId || userId===null) return;
-
-    const socket = io('https://preacherclan.onrender.com'); 
+    const socket = io('https://preacherclan.onrender.com');
     socketRef.current = socket;
 
     socket.emit('userOnline', userId);
 
     socket.on('matchAccepted', (matchUserData) => {
-      
       setMatch(matchUserData);
     });
 
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [userId]);
 
   return (
     <MatchContext.Provider value={{ match, setMatch }}>
