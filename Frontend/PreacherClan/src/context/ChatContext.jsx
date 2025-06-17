@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import VikingToast from '../Components/VikingToast'
+import VikingToast from '../Components/VikingToast';
 
 
 const ChatContext = createContext();
