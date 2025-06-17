@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   email: { type: String, required: true },
   password: { type: String },
+  image : {type:String},
 
   // Relationships
   profile: { type: mongoose.Schema.Types.ObjectId, ref: "Profile" },

@@ -25,7 +25,8 @@ const getProfiles = async (req, res) => {
             followersCount: user.followers ? user.followers.length : 0,
             friends : user.partner ? user.partner.map(partner => ({
                 id: partner._id,
-                name: partner.name, }) ) : [],
+                name: partner.name,
+                image : partner.image, }) ) : [],
 
         }));
         return res.status(200).json({ profiles });
@@ -88,6 +89,7 @@ const getProfileById = async (req, res) => {
             friends: user.partner ? user.partner.map(partner => ({
                 id: partner._id,
                 name: partner.name,
+                image: partner.image,
             })) : [],
         }));
 

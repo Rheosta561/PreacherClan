@@ -1,6 +1,8 @@
 const expres = require('express');
 const router = expres.Router();
 const User = require('../Models/User');
+const {userImage} = require('../Manipulations/UserImage');
+
 
 router.get('/:userId' , async(req,res)=>{
     try {
@@ -15,4 +17,6 @@ router.get('/:userId' , async(req,res)=>{
         
     }
 });
+
+
 module.exports = router;

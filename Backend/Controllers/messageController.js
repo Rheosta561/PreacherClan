@@ -71,7 +71,7 @@ console.log(media);
     await chat.save();
    
 
-    const populatedMessage = await newMessage.populate('sender', 'username _id');
+    const populatedMessage = await newMessage.populate('sender', 'username _id image');
 
 
     const io = getIo();
@@ -113,7 +113,7 @@ const getMessages = async (req, res) => {
     }
 
     const messages = await Message.find({ chat: chatId })
-      .populate('sender', 'username _id')
+      .populate('sender', 'username _id image')
       .sort({ createdAt: 1 });
 
     res.status(200).json(messages);

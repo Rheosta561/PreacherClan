@@ -38,6 +38,7 @@ const authRoutes = require('./Routes/AuthRoutes');
 const JoinGymRoutes = require('./Routes/joinGymRouter');
 const passport = require("passport");
 const resetJobs = require("./Utils/resetJobs");
+const {userImage} = require('./Manipulations/UserImage');
 require("./config/passport");
 app.use(passport.initialize());
 app.use(useragent.express());
@@ -69,6 +70,7 @@ app.use('/repmate' , repmateRouter);
 
 app.use('/chat', chatRouter);
 app.use('/message' ,messageRouter );
+
 
 
 const port = process.env.PORT || 3000 ;
