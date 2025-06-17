@@ -17,6 +17,6 @@ exports.googleAuthCallback = (req, res, next) => {
 
   
 
-      return res.redirect(`https://preacherclan.vercel.app/dashboard?token=${token}`);
+      return res.redirect(`https://preacherclan.vercel.app/dashboard?token=${token}`)
     })(req, res, next);
   };
