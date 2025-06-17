@@ -14,7 +14,7 @@ export const ChatProvider = ({ children }) => {
   const parsedUser = storedUser ? JSON.parse(storedUser) : null;
 
   const userId = parsedUser?._id;
-  const profileImage = parsedUser?.image || '';
+  const profileImage = parsedUser?.image || ''
 
   const safeParseMedia = (mediaArray) => {
     try {
