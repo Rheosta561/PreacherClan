@@ -5,7 +5,7 @@ import GymBuddyCard from "../Components/GymBuddyCard";
 import SwipeInstructions from "../Components/SwipeInstructions";
 import { Toaster , toast } from "sonner";
 import { Navbar } from "@heroui/react";
-import VikingToast from "../Components/VikingToast";
+import VikingToast from "../Components/VikingToast"
 import repmateKing from "../assets/repmateKing.png";
 import RepMateCardRequest from "../Components/RepMateRequestCard";
 import { useRef } from "react";
