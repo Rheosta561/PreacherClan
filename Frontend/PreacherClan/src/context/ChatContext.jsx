@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import VikingToaster from '../Components/VikingToaster';
 
-import VikingToast from '../Components/VikingToast';
+
 
 
 const ChatContext = createContext();
@@ -86,11 +87,12 @@ export const ChatProvider = ({ children }) => {
     <ChatContext.Provider value={{ socket, messages, setMessages, sendMessage }}>
       {children}
 
-      <VikingToast
+      <VikingToaster
         visible={toast.visible}
         message={toast.message}
         onClose={() => setToast({ visible: false, message: '' })}
       />
+      
     </ChatContext.Provider>
   );
 };

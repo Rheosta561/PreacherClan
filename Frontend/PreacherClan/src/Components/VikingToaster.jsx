@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import skull from '../assets/repmateKing.png';
 
-const VikingToast = ({ message, visible, onClose }) => {
+const VikingToaster = ({ message, visible, onClose }) => {
   useEffect(() => {
     if (visible) {
       const timer = setTimeout(() => {
@@ -39,4 +39,4 @@ const VikingToast = ({ message, visible, onClose }) => {
   );
 };
 
-export default VikingToast;
+export default VikingToaster;

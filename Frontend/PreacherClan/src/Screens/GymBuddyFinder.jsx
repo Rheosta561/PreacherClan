@@ -5,7 +5,7 @@ import GymBuddyCard from "../Components/GymBuddyCard";
 import SwipeInstructions from "../Components/SwipeInstructions";
 import { Toaster , toast } from "sonner";
 import { Navbar } from "@heroui/react";
-// import VikingToast from "../Components/VikingToast"
+// import VikingToaster from "../Components/VikingToaster"
 import repmateKing from "../assets/repmateKing.png";
 import RepMateCardRequest from "../Components/RepMateRequestCard";
 import { useRef } from "react";
@@ -288,7 +288,7 @@ onClick={showToast}
 >
   Summon Viking Toast
 </button>
-<VikingToast
+<VikingToaster
         visible={toastVisible}
         onClose={() => setToastVisible(false)}
         message="A brother-in-arms sends his regards!"
