@@ -11,7 +11,7 @@ import RepMateCardRequest from "../Components/RepMateRequestCard";
 import { useRef } from "react";
 import { useEffect } from "react";
 import MatchListener from "../Components/MatchListener";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"
 import axios from "axios";
 
 const dummyRequests = [
