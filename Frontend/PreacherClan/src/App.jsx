@@ -23,62 +23,59 @@ import Chats from './Screens/Chats';
 import ChatScreen from './Screens/ChatScreen';
 import { ChatProvider } from './context/ChatContext';
 import ChatListener from './Components/ChatListener';
+import ProtectedRoute from './ProtectedRoute';
 
 function App() {
   return (
     <NotificationProvider>
       <ProfileProvider>
         <ChatProvider>
-        <MatchProvider>
-          
-        <NotificationListener />
-        <ProfileListener />
-        <ChatListener/>
-        <MatchListener/>
+          <MatchProvider>
 
-        <BrowserRouter>
-        
-          <Toaster
-            position="top-center"
-            theme="dark"
-            toastOptions={{
-              classNames: {
-                toast: "bg-zinc-900 text-white border border-red-800 shadow-2xl",
-                title: "font-bold text-red-500",
-                description: "text-sm text-zinc-300 ",
-              },
-              duration: 4000,
-            }}
-          />
+            <NotificationListener />
+            <ProfileListener />
+            <ChatListener />
+            <MatchListener />
 
-          <Routes>
-            <Route path ='/' element={<Login />}/>
+            <BrowserRouter>
+              <Toaster
+                position="top-center"
+                theme="dark"
+                toastOptions={{
+                  classNames: {
+                    toast: "bg-zinc-900 text-white border border-red-800 shadow-2xl",
+                    title: "font-bold text-red-500",
+                    description: "text-sm text-zinc-300 ",
+                  },
+                  duration: 4000,
+                }}
+              />
 
-            <Route path='/login' element={<Login />} />
-            <Route path='/signup' element={<Signup />} />
-            <Route path='/onboarding' element={<Onboarding />} />
+              <Routes>
+                {/* Public Routes */}
+                <Route path='/' element={<Login />} />
+                <Route path='/login' element={<Login />} />
+                <Route path='/signup' element={<Signup />} />
+                <Route path='/onboarding' element={<Onboarding />} />
 
+                
+                <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                  <Route path='/dashboard' element={<Dashboard />} />
+                  <Route path='/join/gym/:gymId' element={<JoinClan />} />
+                  <Route path='/gym/buddy/finder' element={<GymBuddyFinder />} />
+                  <Route path='/notifications' element={<Notifications />} />
+                  <Route path='/profile' element={<Profile />} />
+                  <Route path='/search' element={<SearchScreen />} />
+                  <Route path='/clan/:clanId' element={<Clan />} />
+                  <Route path='/chats' element={<Chats />} />
+                  <Route path='/chat/:chatId' element={<ChatScreen />} />
+                  <Route path='/chat/:userId/:receiverId' element={<ChatScreen />} />
+                </Route>
+              </Routes>
 
-            <Route element={<Layout />}>
-              <Route path='/dashboard' element={<Dashboard />} />
-              <Route path='/join/gym/:gymId' element={<JoinClan />} />
-              <Route path='/gym/buddy/finder' element={<GymBuddyFinder />} />
-              <Route path='/notifications' element={<Notifications />} />
-              <Route path='/profile' element={<Profile />} />
-              <Route path='/search' element={<SearchScreen />} />
-              <Route path='/clan/:clanId' element={<Clan />} />
-              <Route path = '/chats' element={<Chats/>} />
-              <Route path = '/chat/:chatId' element = {<ChatScreen/>} />
-              <Route path = '/chat/:userId/:receiverId' element={<ChatScreen/>}/>
+            </BrowserRouter>
 
-            </Route>
-          </Routes>
-          
-        </BrowserRouter>
-
-
-
-        </MatchProvider>
+          </MatchProvider>
         </ChatProvider>
       </ProfileProvider>
     </NotificationProvider>

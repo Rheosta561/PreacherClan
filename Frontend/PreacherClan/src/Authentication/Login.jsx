@@ -9,6 +9,14 @@ const Login = () => {
     const handleClick = () => {
         navigate('/signup');
     };
+    const setUser = (user)=>{
+        localStorage.setItem('user' , user);
+
+    }
+    const user = localStorage.getItem('user');
+    if(user){
+        navigate('/dashboard');
+    }
 
     const handleGoogleLogin = () => {
         window.location.href = "https://preacherclan.onrender.com/auth/google";
@@ -50,7 +58,7 @@ const Login = () => {
                         
                         <div className="flex justify-between items-center mb-4">
                             <label className="text-zinc-200 text-sm flex items-center">
-                                <input type="checkbox" className="mr-2" /> Remember me
+                                <input type="checkbox" className="mr-2" onClick={setUser} /> Remember me
                             </label>
                             <a href="#" className="text-zinc-200 text-sm">Forgot password?</a>
                         </div>
