@@ -59,7 +59,7 @@ export const ChatProvider = ({ children }) => {
   useEffect(() => {
     if (!userId) return;
 
-    const socket = io('http://localhost:3000');
+    const socket = io('https://preacherclan.onrender.com');
     socketRef.current = socket;
     setSocket(socket);
 

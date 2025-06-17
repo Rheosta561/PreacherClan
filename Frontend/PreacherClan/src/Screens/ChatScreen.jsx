@@ -27,9 +27,9 @@ function ChatScreen() {
     const fetchChat = async () => {
       try {
         if (chatId) {
-          await axios.get(`http://localhost:3000/message/fetch/${chatId}`);
+          await axios.get(`https://preacherclan.onrender.com/message/fetch/${chatId}`);
         }
-        const res = await axios.get(`http://localhost:3000/chat/${userId}/${receiverId}`);
+        const res = await axios.get(`https://preacherclan.onrender.com/chat/${userId}/${receiverId}`);
         setChat(res.data);
       } catch (err) {
         console.error('Failed to fetch chat:', err.message);
@@ -55,7 +55,7 @@ function ChatScreen() {
     if (!chat?._id) return;
     const fetchMessages = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/message/fetch/${chat._id}`);
+        const response = await axios.get(`https://preacherclan.onrender.com/message/fetch/${chat._id}`);
         setMessages(
           response.data.map((msg) => {
             const media = safeParseMedia(msg.media);
@@ -114,7 +114,7 @@ function ChatScreen() {
         content: input,
         messageType: 'text',
       };
-      const res = await axios.post('http://localhost:3000/message/send', payload);
+      const res = await axios.post('https://preacherclan.onrender.com/message/send', payload);
       const newMsg = res.data;
       console.log(newMsg);
       setMessages((prev) => [
@@ -151,7 +151,7 @@ function ChatScreen() {
     formData.append('messageType', messageType);
 
     try {
-      const res = await axios.post('http://localhost:3000/message/send', formData);
+      const res = await axios.post('https://preacherclan.onrender.com/message/send', formData);
       const newMsg = res.data;
       const mediaFile = JSON.parse(res.data.media);
       mediaFile.forEach((m) => {
@@ -183,7 +183,7 @@ function ChatScreen() {
     formData.append('messageType', 'media');
 
     try {
-      const res = await axios.post('http://localhost:3000/message/send', formData);
+      const res = await axios.post('https://preacherclan.onrender.com/message/send', formData);
       const newMsg = res.data;
       newMsg.media?.forEach((m) => {
         if (m.type === 'audio') {

@@ -86,7 +86,7 @@ function Chats() {
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const response = await axios.post('http://localhost:3000/chat/getChats', { user });
+        const response = await axios.post('https://preacherclan.onrender.com/chat/getChats', { user });
         console.log('chatResponse', response.data);
         setChats(response.data);
       } catch (error) {
