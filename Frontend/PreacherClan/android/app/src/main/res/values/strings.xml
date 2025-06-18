@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Preacher Clan</string>
+    <string name="title_activity_main">Preacher Clan</string>
+    <string name="package_name">com.preacherclan.app</string>
+    <string name="custom_url_scheme">com.preacherclan.app</string>
+</resources>

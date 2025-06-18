@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import bg from '../assets/bg.jpg';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
@@ -13,10 +13,22 @@ const Login = () => {
         localStorage.setItem('user' , user);
 
     }
-    const user = localStorage.getItem('user');
+    useEffect(() => {
+        const fetchUserFromLocalStorage = ()=>{
+            const user = localStorage.getItem('user');
     if(user){
         navigate('/dashboard');
+    }else{
+        return ;
     }
+
+        }
+        fetchUserFromLocalStorage();
+    
+      
+    }, [])
+    
+    
 
     const handleGoogleLogin = () => {
         window.location.href = "https://preacherclan.onrender.com/auth/google";
