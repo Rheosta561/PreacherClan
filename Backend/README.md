@@ -1,4 +1,4 @@
-```markdown
+
 # PreacherClan
 
 [![GitHub Stars](https://img.shields.io/github/stars/Rheosta561/PreacherClan?style=social)](https://github.com/Rheosta561/PreacherClan)
