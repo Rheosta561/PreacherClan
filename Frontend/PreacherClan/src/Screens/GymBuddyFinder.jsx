@@ -237,7 +237,7 @@ const handleSwipe = async(direction) => {
         className: "bg-green-700 text-white border border-green-800 shadow-lg",
       });
       setRequests((prev) => prev.filter((req) => req._id !== requestId));
-      localStorage.setItem('user' , response.data.user);
+      localStorage.setItem('user' , JSON.stringify(response.data.user));
       
     } else {
       toast.error("Failed to accept request. Please try again.", {
@@ -282,12 +282,12 @@ const handleSwipe = async(direction) => {
           )}
         </div>
       </div>
-      <button
+      {/* <button
 onClick={showToast}
   className="p-2 bg-red-700 opacity-0 text-white rounded-lg shadow hover:bg-red-800"
 >
   Summon Viking Toast
-</button>
+</button> */}
 
       
       
