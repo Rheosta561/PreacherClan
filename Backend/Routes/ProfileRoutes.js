@@ -167,7 +167,7 @@ router.post("/:userId", upload, async (req, res) => {
 
     const fetchedProfile = await Profile.findOne({userId : req.params.userId}) ;
     if(fetchedProfile){
-       user.profile = profile._id;
+       user.profile = fetchedProfile._id;
     user.onboardingCompleted = true; 
     await user.save();
       return res.status(200).json({
