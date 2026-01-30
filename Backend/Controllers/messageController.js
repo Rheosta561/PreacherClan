@@ -8,24 +8,31 @@ const {sendNotification} = require('../Utils/NotificationService');
 
 const sendMessage = async (req, res) => {
   try {
-    const sender = req.body.userId; 
-    const { chatId, receiverId, messageType = 'text', content = '' } = req.body;
+    const sender = req.body.userId;
+
+    const {
+      chatId,
+      receiverId,
+      messageType = "text",
+      content = "",
+      replyTo = null,
+    } = req.body;
 
     if (!chatId && !receiverId) {
-      return res.status(400).json({ error: 'Either chatId or receiverId is required' });
+      return res
+        .status(400)
+        .json({ error: "Either chatId or receiverId is required" });
     }
-    const foundUser = await User.findOne({sender});
 
     let chat;
 
-    // Case 1: chatId is given — find it
+// find or create 
     if (chatId) {
       chat = await Chat.findById(chatId);
-      if (!chat) return res.status(404).json({ error: 'Chat not found' });
-    }
-
-    // Case 2: receiverId is given — find or create 1-on-1 chat
-    else if (receiverId) {
+      if (!chat) {
+        return res.status(404).json({ error: "Chat not found" });
+      }
+    } else {
       chat = await Chat.findOne({
         isGroupChat: false,
         participants: { $all: [sender, receiverId] },
@@ -38,69 +45,89 @@ const sendMessage = async (req, res) => {
         });
       }
     }
-    let mediaFiles = req.files || [];
-    console.log('received files')
-    console.log(mediaFiles);
 
+    // media files 
+    const mediaFiles = req.files || [];
 
+    const media = mediaFiles.map((file) => ({
+      public_id: file.filename,
+      url: file.path,
+      type: file.mimetype.startsWith("image")
+        ? "image"
+        : file.mimetype.startsWith("video")
+        ? "video"
+        : file.mimetype.startsWith("audio")
+        ? "audio"
+        : "file",
+    }));
 
-    // Process media uploads if any
-
-  const media = mediaFiles.map(file => ({
-  public_id: file.filename, 
-  url: file.path,            
-  type: file.mimetype.startsWith('image') ? 'image' :
-        file.mimetype.startsWith('video') ? 'video' :
-        file.mimetype.startsWith('audio') ? 'audio' :
-        'file'
-}));
-console.log(media);
-
-    // Create message
+    //creating message 
     const newMessage = await Message.create({
       sender,
       chat: chat._id,
       messageType,
       content,
-      media : JSON.stringify(media),
+      media: JSON.stringify(media),
+      replyTo,
     });
 
-    
+    // updating chat 
     chat.latestMessage = newMessage._id;
-
     await chat.save();
-   
 
-    const populatedMessage = await newMessage.populate('sender', 'username _id image');
+    //populating message 
+    const populatedMessage = await Message.findById(newMessage._id)
+      .populate("sender", "username _id image")
+      .populate({
+        path: "replyTo",
+        populate: {
+          path: "sender",
+          select: "username _id image",
+        },
+      });
 
-
+    // socket and notificaiton 
     const io = getIo();
-
-    const fullChat = await chat.populate('participants', '_id username');
-    console.log(fullChat);
+    const fullChat = await chat.populate(
+      "participants",
+      "_id username"
+    );
 
     for (const user of fullChat.participants) {
-      const socketId = onlineUsers.get(user._id.toString());
-      console.log(user);
-      if (user._id.toString() !== sender.toString()) {
-        console.log(user);
-        const foundUser = await User.findOne({_id:user._id});
-        
-        sendNotification(foundUser, `New message from ${foundUser.name}`, 'info');
-        if(socketId){
-             io.to(socketId).emit('newMessage', populatedMessage);
+      if (user._id.toString() === sender.toString()) continue;
 
+      const socketId = onlineUsers.get(user._id.toString());
+
+      if (socketId) {
+        // ONLINE real-time message
+        io.to(socketId).emit("newMessage", populatedMessage);
+      } else {
+        // OFFLINE notification only
+        const foundUser = await User.findById(user._id);
+
+        if (foundUser) {
+          await sendNotification(
+            foundUser,
+            "New message",
+            `New message from ${populatedMessage.sender.username}`,
+            "info",
+            "chat",
+            `/chats/${chat._id}`
+          );
         }
-       
       }
     }
 
-    res.status(201).json(populatedMessage);
-  } catch (err) {
-    console.log('sendMessage error:', err);
-    res.status(500).json({ error: 'Failed to send message' });
+    return res.status(201).json(populatedMessage);
+  } catch (error) {
+    console.error("sendMessage error:", error);
+    return res.status(500).json({ error: "Failed to send message" });
   }
 };
+
+module.exports = { sendMessage };
+
+
 
 
 
@@ -114,14 +141,20 @@ const getMessages = async (req, res) => {
 
     const messages = await Message.find({ chat: chatId })
       .populate('sender', 'username _id image')
+      .populate({
+        path: 'replyTo',
+        populate: { path: 'sender', select: 'username _id image' }
+      })
       .sort({ createdAt: 1 });
 
     res.status(200).json(messages);
+
   } catch (err) {
     console.error('getMessages error:', err);
     res.status(500).json({ error: 'Failed to fetch messages' });
   }
 };
+
 const deleteMessage = async (req, res) => {
   try {
     const { messageId } = req.params;

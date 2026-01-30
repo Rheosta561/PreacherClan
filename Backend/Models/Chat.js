@@ -24,7 +24,14 @@ const chatSchema = new mongoose.Schema(
     groupAdmin: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
-    }
+    },
+    chatImage : { type : String},
+    deletedFor: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }
+]
   },
   { timestamps: true }
 );

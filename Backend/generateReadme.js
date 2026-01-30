@@ -12,7 +12,7 @@ const GITHUB_REPO_NAME = 'your-repo-name';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function fetchGitHubRepoInfo() {
-  const url = `https://api.github.com/repos/Rheosta561/PreacherClan`;
+  const url = `https://api.github.com/repos/Rheosta561/Automark-Backend`;
   
   const response = await axios.get(url, {
     headers: {
@@ -54,7 +54,7 @@ Please include:
 Write in markdown format. Don't include any personal remarks.
 `;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const result = await model.generateContent(prompt);
   const response = result.response;
@@ -71,7 +71,7 @@ async function main() {
     console.log('Generating README with Gemini...');
     const readme = await generateReadme(repoData);
 
-    fs.writeFileSync('README.md', readme);
+    fs.writeFileSync('AutmarkReadme.md', readme);
     console.log('✅ README.md generated successfully!');
   } catch (error) {
     console.error('Error:', error.response ? error.response.data : error.message);

@@ -2,8 +2,9 @@ const Notification = require('../Models/Notification');
 const User = require('../Models/User');
 const {onlineUsers , getIo} = require('../socket');
 const emailService = require('../Utils/emailService');
+const sendExpoPush = require('./sendExpoPush');
 
-const sendNotification = async (user, message, type , link='') => {
+const sendNotification = async (user, message, title , type , notificationType ,  link='') => {
     const notification = new Notification({
         userId: user._id,
         message,
@@ -127,19 +128,32 @@ const html = `<!DOCTYPE html>
 
 
     
-        await emailService.sendEmail(
-            user.email,
-             'You Have a New Notification',
-            html
-        );
+        // await emailService.sendEmail(
+        //     user.email,
+        //      'You Have a New Notification',
+        //     html
+        // );
+
+       
 
     
 
     const socketId = onlineUsers.get(user._id.toString());
     if (socketId) {
+        console.log(socketId);
         const io = getIo();
         io.to(socketId).emit('notification', notification);
     }
+
+     await sendExpoPush({
+            to: user.pushToken ,
+            title,
+            body: message , 
+            data : {
+                notificationType,
+            }
+
+     })
 }
 module.exports = {
     sendNotification,}

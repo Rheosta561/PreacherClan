@@ -1,5 +1,6 @@
 const User = require("../Models/User");
 const NotificationService = require("../Utils/NotificationService");
+const sendExpoPush = require("./sendExpoPush");
 const updateStreak = async(userId)=>{
     try {
         
@@ -20,7 +21,16 @@ const updateStreak = async(userId)=>{
         user.streak.todayUpdated = true; // Mark today's streak as updated
         await user.save();
         // Send notification to the user
-        const message = `🔥 Streak Updated! Your current streak is now ${updatedStreak} . Keep up the great work! 💪`;
+        const message = `Streak Updated! Your current streak is now ${updatedStreak} . Keep up the great work! 💪`;
+        await sendExpoPush({
+            to: user.pushToken,
+            title: "Streak Updated Successfully ",
+      body: `Your current streak is now ${updatedStreak} . Keep up the great work! 💪`,
+      data: {
+        type: "WORKOUT_UPDATE",
+      },
+
+        });
         await NotificationService.sendNotification(user, message, "info");
 
         return updatedStreak;

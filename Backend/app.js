@@ -12,13 +12,27 @@ const { Server } = require('socket.io');
 const server = http.createServer(app);
 const requests = require('./Models/Requests');
 const repmateRouter = require('./Routes/RepmateRouter');
+const challengeRouter = require('./Routes/ChallengeRoutes');
+const jamRouter = require('./Routes/WorkoutJamRoutes');
+const User = require('./Models/User');
+const sendExpoPush = require('./Utils/sendExpoPush');
+const splitRouter = require('./Routes/WorkoutSplitRouter');
+
+
+const cookieParser = require('cookie-parser');
 const {initSocket} = require('./socket');
 initSocket(server);
-const client = require('./Connection/RedisConnection');
+// const client = require('./Connection/RedisConnection');
 
 const NotificationRouter = require('./Routes/NotificationRouter');
 const chatRouter = require('./Routes/ChatRoutes');
 const messageRouter = require('./Routes/MessageRoutes');
+
+
+const searchRouter = require('./Routes/searchRoutes');
+
+// middleware
+
 
 // const deleteRequests = async(req,res)=>{
 //     try {
@@ -34,6 +48,7 @@ const messageRouter = require('./Routes/MessageRoutes');
 conn();
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
+app.use(cookieParser());
 const authRoutes = require('./Routes/AuthRoutes');
 const JoinGymRoutes = require('./Routes/joinGymRouter');
 const passport = require("passport");
@@ -44,6 +59,9 @@ app.use(passport.initialize());
 app.use(useragent.express());
 app.use(cors());
 resetJobs.setupResetJobs();
+
+const authMiddleware = require('./Middleware/auth');
+
 
 const resetStreak = require('./Utils/resetStreak');
 const cron = require('node-cron');
@@ -60,16 +78,77 @@ app.get('/' , (req,res)=>{
     res.send('Preacher Clan Backend is working');
 });
 app.use('/auth', authRoutes );
-app.use('/profile', ProfileRoutes);
-app.use('/gym', GymRoutes);
-app.use('/join', JoinGymRoutes);
-app.use('/requests' , requestHandlerRouter);
-app.use('/user', userRouter);
-app.use('/notifications', NotificationRouter);
-app.use('/repmate' , repmateRouter); 
+app.use('/profile', authMiddleware , ProfileRoutes);
+app.use('/gym', authMiddleware ,  GymRoutes);
+app.use('/join', authMiddleware , JoinGymRoutes);
+app.use('/requests' , authMiddleware , requestHandlerRouter);
+app.use('/user', authMiddleware , userRouter);
+app.use('/notifications', authMiddleware , NotificationRouter);
+app.use('/repmate' , authMiddleware , repmateRouter); 
 
-app.use('/chat', chatRouter);
-app.use('/message' ,messageRouter );
+app.use('/chat', authMiddleware , chatRouter);
+app.use('/message' , authMiddleware , messageRouter );
+
+app.use('/search', authMiddleware , searchRouter);
+
+
+// challenge routes
+app.use('/challenge', authMiddleware ,  challengeRouter);
+
+
+// jam routes
+app.use('/jam', authMiddleware , jamRouter);
+
+// split routes 
+app.use('/split' , authMiddleware , splitRouter);
+
+
+
+//  testing notifications 
+app.post("/test/:buddyId",  async (req, res) => {
+  try {
+    const buddyId  = req.params.buddyId ; 
+
+    if (!buddyId) {
+      return res.status(400).json({ message: "buddyId is required" })
+    }
+
+    const buddy = await User.findById(buddyId)
+
+    if (!buddy?.pushToken) {
+      return res.json({
+        skipped: true,
+        reason: "No push token found for user",
+      })
+    }
+
+    await sendExpoPush({
+      to: buddy.pushToken,
+      title: "Ek Rep Aur 💪",
+      body: "Test notification from Postman",
+      data: {
+        type: "WORKOUT_UPDATE",
+      },
+    })
+
+    res.json({ sent: true })
+  } catch (err) {
+    console.error("❌ Push error:", err)
+    res.status(500).json({ message: "Push test failed" })
+  }
+})
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

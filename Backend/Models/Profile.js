@@ -17,8 +17,21 @@ const ProfileSchema = new mongoose.Schema({
     exerciseGenre: [{ type: String,  }],
     milestones: [{ type: mongoose.Schema.Types.ObjectId, ref: "Milestone" }],
     preacherRank: { type: Number},
+    timings : {type : String},
+
+   address : {
+        country : {type: String} , 
+        state : {type:String},
+        city : {type : String},
+        lattitude : {type: Number},
+        longitude : {type : Number},
+    },
+    preacherStatus : { type: String }
 
 });
+
+ProfileSchema.index({ userId: 1 }, { unique: true });
+
 
 const Profile = mongoose.model("Profile", ProfileSchema);
 module.exports = Profile;

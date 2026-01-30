@@ -18,5 +18,26 @@ router.get('/:userId' , async(req,res)=>{
     }
 });
 
+router.post("/location", async (req, res) => {
+  const { latitude, longitude ,userId } = req.body;
+
+  if (!latitude || !longitude) {
+    return res.status(400).json({ message: "Invalid coordinates" });
+  }
+
+  const user = await User.findByIdAndUpdate(userId, {
+    location: {
+      type: "Point",
+      coordinates: [longitude, latitude],
+      updatedAt: new Date(),
+    },
+  });
+
+  console.log(user.location);
+
+  res.json({ success: true });
+});
+
+
 
 module.exports = router;

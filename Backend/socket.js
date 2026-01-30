@@ -1,5 +1,6 @@
 // socket.js
 const { Server } = require('socket.io');
+const workoutJamSocket = require('./Socket/workoutJam.socket');
 
 let io = null;
 const onlineUsers = new Map();
@@ -22,6 +23,8 @@ function initSocket(server) {
       console.log(`User ${userId} is online with socket ${socket.id}`);
     });
 
+    workoutJamSocket(io , socket);
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       for (const [userId, socketId] of onlineUsers.entries()) {
@@ -30,6 +33,25 @@ function initSocket(server) {
           break;
         }
       }
+    });
+    socket.on("joinChat", (chatId) => {
+      socket.join(chatId);
+      console.log(`Socket ${socket.id} joined chat ${chatId}`);
+    });
+
+    // TYPING START
+    socket.on("typing:start", ({ chatId, userId }) => {
+      socket.to(chatId).emit("typing:start", { chatId, userId });
+
+      clearTimeout(socket.typingTimer);
+      socket.typingTimer = setTimeout(() => {
+        socket.to(chatId).emit("typing:stop", { chatId, userId });
+      }, 3000);
+    });
+
+    // TYPING STOP
+    socket.on("typing:stop", ({ chatId, userId }) => {
+      socket.to(chatId).emit("typing:stop", { chatId, userId });
     });
   });
 }
