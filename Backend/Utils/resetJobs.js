@@ -14,7 +14,7 @@ function setupResetJobs() {
   // Monthly reset: 00:00 on 1st day of every month
   console.log('Setting up reset jobs...');
   cron.schedule('0 0 1 * *', async () => {
-    console.log('Running monthly streak reset job...');
+    console.log('Running monthly streak reset job...')
     try {
       const users = await User.find();
       const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
