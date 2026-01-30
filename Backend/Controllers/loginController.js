@@ -61,7 +61,7 @@ exports.googleAuthentication = async (req, res) => {
         profileImage: picture,
       });
 
-      await sendEmail(
+      sendEmail(
         email,
         "Welcome to Preacher Clan ⚔️",
         `<p>Welcome <b>${name}</b> to Preacher Clan</p>`
@@ -164,7 +164,7 @@ exports.login = async (req, res) => {
     const device = `${req.useragent?.platform || "Unknown"} - ${req.useragent?.browser || "Unknown"}`;
     const time = new Date().toLocaleString();
 
-    await sendEmail(
+   sendEmail(
       user.email,
       "New Login Alert – Preacher Clan",
       `<p>New login detected</p>
@@ -230,7 +230,7 @@ exports.signUp = async (req, res) => {
     user.refreshTokenHash = hashToken(refreshToken);
     await user.save();
 
-    await sendEmail(
+    sendEmail(
       email,
       "Welcome to Preacher Clan",
       `<p>Welcome <b>${username}</b> to Preacher Clan ⚔️</p>`
