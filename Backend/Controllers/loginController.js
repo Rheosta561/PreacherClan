@@ -211,8 +211,12 @@ exports.signUp = async (req, res) => {
     }
 
     const exists = await User.findOne({ username });
+    const emailExists = await User.findOne({email});
     if (exists) {
       return res.status(409).json({ error: "Username already exists" });
+    }
+    if(emailExists){
+      return res.status(409).json({error : 'Email Already exists '});
     }
 
     const user = await User.create({
