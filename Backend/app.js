@@ -17,6 +17,7 @@ const jamRouter = require('./Routes/WorkoutJamRoutes');
 const User = require('./Models/User');
 const sendExpoPush = require('./Utils/sendExpoPush');
 const splitRouter = require('./Routes/WorkoutSplitRouter');
+const adminRouter = require('./Routes/AdminRoutes');
 
 
 const cookieParser = require('cookie-parser');
@@ -101,6 +102,9 @@ app.use('/jam', authMiddleware , jamRouter);
 
 // split routes 
 app.use('/split' , authMiddleware , splitRouter);
+
+// admin routes 
+app.use('/admin', adminRouter);
 
 
 

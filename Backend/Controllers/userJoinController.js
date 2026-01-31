@@ -51,7 +51,7 @@ const joinController = async (req, res) => {
     await sendEmail(
       user.email,
       `Welcome to ${foundGym.name}`,
-      htmlContent(user.username, foundGym.name)
+      // htmlContent(user.username, foundGym.name)
     );
 
 
