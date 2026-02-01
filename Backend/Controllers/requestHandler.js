@@ -37,14 +37,15 @@ exports.requestAccepter = async (req, res) => {
 
     const message = `🪓 Hail! ${user.name} has answered your call. Destiny binds you now — begin your saga in chat! 🔥`;
 
-    await notificationService.sendNotification(
-      partner,
-      message,
-      "RepMate Match ⚔️",
-      "info",
-      "match",
-      `/chats`
-    );
+    sendNotification(
+  partner,
+  message,
+  "RepMate Match ⚔️",
+  "info",
+  "REPMATE"
+);
+
+
 
     await sendMatchNotification(partner, user);
 
@@ -133,22 +134,25 @@ const isAlreadyAFriend =
 
         const partnerMessage = `🪓 Hail! You have a new request from ${user.name}`;
 
-        await notificationService.sendNotification(
+ await notificationService.sendNotification(
   user,
   message,
   "Request Sent ⚔️",
   "info",
-  "request"
+  "PROMO"
 );
+
+
 
 await notificationService.sendNotification(
   partner,
   partnerMessage,
   "New RepMate Request 🪓",
   "info",
-  "request",
-  `/requests`
+  "REPMATE"
 );
+
+
 
         
         if (!request) {

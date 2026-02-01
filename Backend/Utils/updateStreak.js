@@ -1,44 +1,60 @@
 const User = require("../Models/User");
 const NotificationService = require("../Utils/NotificationService");
 const sendExpoPush = require("./sendExpoPush");
-const updateStreak = async(userId)=>{
-    try {
-        
-        const user = await User.findOne({ _id:userId });
-        if (!user) {
-            throw new Error("User not found");
-        }
-        if(user.streak.todayUpdated){
-            await NotificationService.sendNotification(user, "You have already updated your streak for today. Keep up the good work!", "info");
-            return user.streak.count || 0;
-        }
-       const currStreak = user.streak.count || 0;
-       const weeklyHits = user.workoutHitsPerWeek || 0;
-       updatedWeeklyHits = weeklyHits + 1;
-         user.workoutHitsPerWeek = updatedWeeklyHits;
-        const updatedStreak = currStreak + 1;
-        user.streak.count = updatedStreak;
-        user.streak.todayUpdated = true; // Mark today's streak as updated
-        await user.save();
-        // Send notification to the user
-        const message = `Streak Updated! Your current streak is now ${updatedStreak} . Keep up the great work! 💪`;
-        await sendExpoPush({
-            to: user.pushToken,
-            title: "Streak Updated Successfully ",
-      body: `Your current streak is now ${updatedStreak} . Keep up the great work! 💪`,
-      data: {
-        type: "WORKOUT_UPDATE",
-      },
 
-        });
-        await NotificationService.sendNotification(user, message, "info");
+const updateStreak = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    if (!user) throw new Error("User not found");
 
-        return updatedStreak;
+    // Already updated today
+    if (user.streak.todayUpdated) {
+      await NotificationService.sendNotification(
+        user,
+        "You have already updated your streak for today. Keep up the good work! 💪",
+        "Streak Already Updated",
+        "info",
+        "BATTLEFORGE"
+      );
 
-    } catch (error) {
-        console.error("Error updating streak:", error);
-        throw error;
+      return user.streak.count || 0;
     }
 
-}
-module.exports = {updateStreak};
+    const currStreak = user.streak.count || 0;
+    const weeklyHits = user.workoutHitsPerWeek || 0;
+
+    user.workoutHitsPerWeek = weeklyHits + 1;
+    user.streak.count = currStreak + 1;
+    user.streak.todayUpdated = true;
+
+    await user.save();
+
+    const message = `🔥 Streak Updated! Your current streak is now ${user.streak.count}. Keep pushing! 💪`;
+
+    //  PUSH notification
+    await sendExpoPush({
+      to: user.pushToken,
+      title: "Streak Updated ⚔️",
+      body: message,
+      data: {
+        type: "BATTLEFORGE",
+      },
+    });
+
+    // In-app notification
+    await NotificationService.sendNotification(
+      user,
+      message,
+      "Streak Updated ⚔️",
+      "info",
+      "BATTLEFORGE"
+    );
+
+    return user.streak.count;
+  } catch (error) {
+    console.error("Error updating streak:", error);
+    throw error;
+  }
+};
+
+module.exports = { updateStreak };

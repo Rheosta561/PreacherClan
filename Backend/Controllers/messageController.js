@@ -77,7 +77,7 @@ const sendMessage = async (req, res) => {
 
     //populating message 
     const populatedMessage = await Message.findById(newMessage._id)
-      .populate("sender", "username _id image")
+      .populate("sender", "username _id image name")
       .populate({
         path: "replyTo",
         populate: {
@@ -90,7 +90,7 @@ const sendMessage = async (req, res) => {
     const io = getIo();
     const fullChat = await chat.populate(
       "participants",
-      "_id username"
+      "_id username name"
     );
 
     for (const user of fullChat.participants) {
@@ -106,14 +106,27 @@ const sendMessage = async (req, res) => {
         const foundUser = await User.findById(user._id);
 
         if (foundUser) {
-          await sendNotification(
-            foundUser,
-            "New message",
-            `New message from ${populatedMessage.sender.username}`,
-            "info",
-            "chat",
-            `/chats/${chat._id}`
-          );
+         const previewText =
+  messageType === "text"
+    ? content
+    : messageType === "image"
+    ? "📸 Image"
+    : messageType === "video"
+    ? "🎥 Video"
+    : "📎 Attachment";
+await sendNotification(
+  foundUser,
+  `💬 ${populatedMessage.sender.username}: ${previewText}`,
+  "New Message ⚔️",
+  "info",        // DB severity
+  "CHAT",        // navigation type
+  {
+    receiverId: sender.toString(), // used by frontend router
+    senderName : populatedMessage.sender.name 
+  }
+);
+
+
         }
       }
     }

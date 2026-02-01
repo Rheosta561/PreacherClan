@@ -288,14 +288,14 @@ router.put("/:userId", upload, async (req, res) => {
 
 
    emitProfileUpdate(profile);
-   await notificationService.sendNotification(
+ await notificationService.sendNotification(
   user,
   "Your profile has been updated successfully",
   "Profile Updated ✨",
-  "info",
-  "profile",
-  `/profile/${user._id}`
+  "info",        // DB severity
+  "PROMO"        // PUSH NAV TYPE (final)
 );
+
 
     res.json({ message: "Profile updated successfully", profile });
   } catch (error) {

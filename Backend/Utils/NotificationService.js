@@ -4,11 +4,19 @@ const {onlineUsers , getIo} = require('../socket');
 const emailService = require('../Utils/emailService');
 const sendExpoPush = require('./sendExpoPush');
 
-const sendNotification = async (user, message, title , type , notificationType ,  link='') => {
+const sendNotification = async (
+  user,
+  message,
+  title,
+  severity = "info",   // DB only
+  pushType,            //  CHAT | REPMATE | BATTLEFORGE | PROMO
+  pushData = {},       // receiverId etc
+  link = ""
+)  => {
     const notification = new Notification({
         userId: user._id,
         message,
-        type
+        type:severity ,
     });
 
     await notification.save();
@@ -150,7 +158,8 @@ const html = `<!DOCTYPE html>
             title,
             body: message , 
             data : {
-                notificationType,
+                type: pushType,
+                ...pushData
             }
 
      })

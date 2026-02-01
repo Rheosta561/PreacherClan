@@ -126,10 +126,56 @@ const clearUserGym = async (req, res) => {
     });
   }
 };
+const resetAllGymAndUserData = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-module.exports = {
-  clearUserGym,
+  try {
+    // 1️⃣ Clear gym field from all users
+    const userResult = await User.updateMany(
+      {},
+      {
+        $unset: { gym: "" },
+      },
+      { session }
+    );
+
+    // 2️⃣ Clear members & trainers from all gyms
+    const gymResult = await Gym.updateMany(
+      {},
+      {
+        $set: {
+          members: [],
+          trainers: [],
+        },
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      success: true,
+      message: "All gym and user data reset successfully",
+      usersUpdated: userResult.modifiedCount,
+      gymsUpdated: gymResult.modifiedCount,
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
+    console.error("resetAllGymAndUserData error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Reset failed",
+      error: error.message,
+    });
+  }
 };
 
 
-module.exports = { fixUserGymData , clearUserGym };
+
+
+module.exports = { fixUserGymData , clearUserGym , resetAllGymAndUserData };
