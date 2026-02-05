@@ -14,7 +14,8 @@ router.get("/google/callback", authController.googleAuthCallback);
 router.post('/login', loginController.login );
 router.post('/signup', loginController.signUp);
 router.post('/refresh', loginController.refreshToken );
-
+router.post('/change-password', loginController.changePassword);
+router.post('/reset-password' , loginController.resetPassword);
 // notfications 
 router.post('/push-token', savePushToken);
 
