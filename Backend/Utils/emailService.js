@@ -1,30 +1,18 @@
-const nodemailer = require('nodemailer');
-require('dotenv').config();
-
-
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL,  
-        pass: process.env.PASS      
-    }
-});
-
-
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async (to, subject, html) => {
-    try {
-        await transporter.sendMail({
-            from: process.env.EMAIL,
-            to, // Sending to the same email address
-            subject,
-            html
-        });
-        console.log("Email sent successfully to:", to);
-    } catch (error) {
-        console.error("Error sending email:", error.message);
-    }
+  try {
+    await resend.emails.send({
+      from: "Preacher Clan <no-reply@preacherclan.com>",
+      to,
+      subject,
+      html,
+    });
+    console.log("Email sent to:", to);
+  } catch (err) {
+    console.error("Resend email error:", err);
+  }
 };
-module.exports = {
-    sendEmail
-};
+
+module.exports = { sendEmail };
