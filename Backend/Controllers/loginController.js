@@ -5,6 +5,13 @@ const nodemailer = require("nodemailer");
 const generateTokens = require("../Utils/generateTokens");
 const hashToken = require("../Utils/hashToken");
 const generateUsername = require('../Utils/generateUsername');
+const crypto = require("crypto");
+
+const generateSecurePassword = () => {
+  const randomPart = crypto.randomBytes(4).toString("hex"); // 8 chars
+  return `preacher${randomPart}`; 
+};
+
 
 require("dotenv").config();
 const { OAuth2Client } = require("google-auth-library");
@@ -305,4 +312,90 @@ exports.logout = (req, res) => {
   });
 
   return res.json({ message: "Logged out" });
+};
+
+
+// change pass
+exports.changePassword = async (req, res) => {
+  try {
+    const { email, previousPassword, newPassword } = req.body;
+
+    if (!email || !previousPassword || !newPassword) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(previousPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Previous password is incorrect" });
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({ error: "New password must be different" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    // Email alert
+    sendEmail(
+      email,
+      "Password Changed – Preacher Clan",
+      `
+        <p>Your password was successfully changed.</p>
+        <p>If this wasn’t you, please reset your password immediately.</p>
+      `
+    );
+
+    return res.json({ message: "Password changed successfully" });
+
+  } catch (err) {
+    console.error("Change password error:", err);
+    return res.status(500).json({ error: "Failed to change password" });
+  }
+};
+
+
+// reset password 
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const newPassword = generateSecurePassword();
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    // Send email with new password
+    sendEmail(
+      email,
+      "Password Reset – Preacher Clan ⚔️",
+      `
+        <p>Your password has been reset.</p>
+        <p><b>New Password:</b> <code>${newPassword}</code></p>
+        <p>Please log in and change it immediately.</p>
+      `
+    );
+
+    return res.json({
+      message: "New password sent to your email",
+    });
+
+  } catch (err) {
+    console.error("Reset password error:", err);
+    return res.status(500).json({ error: "Failed to reset password" });
+  }
 };
