@@ -12,6 +12,8 @@ const generateSecurePassword = () => {
   return `preacher${randomPart}`; 
 };
 
+const {sendEmail}= require('../Utils/emailService');
+
 
 require("dotenv").config();
 const { OAuth2Client } = require("google-auth-library");
@@ -110,26 +112,7 @@ exports.googleAuthentication = async (req, res) => {
 
 // email setup 
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.PASS,
-  },
-});
 
-const sendEmail = async (to, subject, html) => {
-  try {
-    await transporter.sendMail({
-      from: process.env.EMAIL,
-      to,
-      subject,
-      html,
-    });
-  } catch (err) {
-    console.error("Email error:", err.message);
-  }
-};
 
 // cookiehelper 
 
@@ -343,7 +326,7 @@ exports.changePassword = async (req, res) => {
     await user.save();
 
     // Email alert
-    sendEmail(
+    await sendEmail(
       email,
       "Password Changed – Preacher Clan",
       `
@@ -380,7 +363,7 @@ exports.resetPassword = async (req, res) => {
     await user.save();
 
     // Send email with new password
-    sendEmail(
+    await sendEmail(
       email,
       "Password Reset – Preacher Clan ⚔️",
       `
