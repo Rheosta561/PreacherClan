@@ -66,6 +66,7 @@ const authMiddleware = require('./Middleware/auth');
 
 const resetStreak = require('./Utils/resetStreak');
 const cron = require('node-cron');
+const { sendEmail } = require('./Utils/emailService');
 cron.schedule('0 0 * * *', () => {
     console.log('Running streak reset job at midnight');
     resetStreak();
@@ -105,6 +106,21 @@ app.use('/split' , authMiddleware , splitRouter);
 
 // admin routes 
 app.use('/admin', adminRouter);
+
+
+// testing mails
+app.post('/test-email', async(req, res)=>{
+  try {
+    const {receiverId , content}= req.body ;
+  await sendEmail(receiverId , 'sample email ' , `<p>Welcome <b>${content}</b> to Preacher Clan</p>`);
+  return res.status(200).json({message : "Successfully sent email"});
+  } catch (error) {
+    return res.status(404).json({error : error.message});
+    
+  }
+
+  
+});
 
 
 

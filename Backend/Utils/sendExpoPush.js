@@ -19,7 +19,7 @@ async function sendExpoPush({ to, title, body, data = {} }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(message),
-  })
+  });
 
   console.log('notification sending stataus '  , res.status);
 
