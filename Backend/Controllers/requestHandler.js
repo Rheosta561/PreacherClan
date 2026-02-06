@@ -37,7 +37,7 @@ exports.requestAccepter = async (req, res) => {
 
     const message = `🪓 Hail! ${user.name} has answered your call. Destiny binds you now — begin your saga in chat! 🔥`;
 
-    sendNotification(
+    await notificationService.sendNotification(
   partner,
   message,
   "RepMate Match ⚔️",
