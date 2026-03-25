@@ -6,14 +6,131 @@ const User = require('../Models/User');
 const updatePreacherScore = require('../Utils/updatePreacherScore');
 const notificationService = require('../Utils/NotificationService');
 
-const encryptPayload = require("../Utils/encrypt");
-const decryptPayload = require("../Utils/decrypt");
-
-
 // push notifications
 const {sendExpoPush} = require('../Utils/sendExpoPush');
 
 const {updateStreak} = require('../Utils/updateStreak');
+const { getDistanceMeters } = require("../Utils/location");
+const {
+  createEntryLog,
+} = require('../Services/entryLogsService');
+
+const GYM_ENTRY_RADIUS_METERS = Number(process.env.GYM_ENTRY_RADIUS_METERS || 5);
+
+const handleLocationBasedEntryAccess = async (req, res) => {
+  const requestedUserId = req.body.userId;
+  const userId = req.user?.id || requestedUserId;
+  const gymCode = req.body.gymCode;
+  const gymId = req.body.gymId;
+
+  if (!userId) {
+    return res.status(401).json({ message: "User authentication is required" });
+  }
+
+  if (requestedUserId && String(requestedUserId) !== String(userId)) {
+    return res.status(403).json({ message: "You can only check in for your own account" });
+  }
+
+  if (!gymCode && !gymId) {
+    return res.status(400).json({ message: "gymCode or gymId is required" });
+  }
+
+  const gymQuery = gymId ? { _id: gymId } : { gymCode };
+  const gym = await Gym.findOne(gymQuery).populate("members");
+  if (!gym) {
+    return res.status(404).json({ message: "Gym not found" });
+  }
+
+  const isMember = gym.members.some((member) => member._id.toString() === String(userId));
+  if (!isMember) {
+    return res.status(403).json({
+      message: "You are not a member of this gym",
+    });
+  }
+
+  const user = await User.findById(userId).select("location");
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  const gymLatitude = gym.address?.latitude ?? gym.address?.lattitude;
+  const gymLongitude = gym.address?.longitude;
+  const userLongitude = user.location?.coordinates?.[0];
+  const userLatitude = user.location?.coordinates?.[1];
+
+  if (!Number.isFinite(Number(gymLatitude)) || !Number.isFinite(Number(gymLongitude))) {
+    return res.status(422).json({
+      message: "Gym location is not configured for entry validation",
+    });
+  }
+
+  if (!Number.isFinite(Number(userLatitude)) || !Number.isFinite(Number(userLongitude))) {
+    return res.status(422).json({
+      message: "User location is required for gym entry validation",
+    });
+  }
+
+  const distanceMeters = getDistanceMeters(
+    userLatitude,
+    userLongitude,
+    gymLatitude,
+    gymLongitude
+  );
+
+  if (distanceMeters == null) {
+    return res.status(422).json({
+      message: "Unable to validate location for gym entry",
+    });
+  }
+
+  if (distanceMeters > GYM_ENTRY_RADIUS_METERS) {
+    await createEntryLog({
+      gymId: gym._id,
+      memberUserId: userId,
+      actionType: "check_in",
+      source: "Mobile",
+      status: "Denied",
+      occurredAt: new Date(),
+      notes: `Denied: user is ${distanceMeters.toFixed(2)}m away from gym`,
+      createdBy: {
+        actorType: "user",
+        actorId: userId,
+      },
+    });
+
+    return res.status(403).json({
+      message: `You must be within ${GYM_ENTRY_RADIUS_METERS} meters of the gym to check in`,
+      distanceMeters: Number(distanceMeters.toFixed(2)),
+      allowedRadiusMeters: GYM_ENTRY_RADIUS_METERS,
+    });
+  }
+
+  await createEntryLog({
+    gymId: gym._id,
+    memberUserId: userId,
+    actionType: "check_in",
+    source: "Mobile",
+    status: "Checked In",
+    occurredAt: new Date(),
+    createdBy: {
+      actorType: "user",
+      actorId: userId,
+    },
+  });
+
+  const streakResult = await updateStreak(userId);
+
+  return res.status(200).json({
+    message: "Entry recorded successfully",
+    gym: gym.name,
+    gymId: gym._id,
+    distanceMeters: Number(distanceMeters.toFixed(2)),
+    currStreak: streakResult.streakCount,
+    streakUpdated: streakResult.updatedToday,
+    workoutHitsPerWeek: streakResult.workoutHitsPerWeek,
+  });
+};
+
 router.post('/create', upload, async (req, res) => {
   try {
     const {
@@ -150,117 +267,29 @@ router.get('/all', async (req, res) => {
 });
 
 router.get('/streak/:gymCode/:userId' , async(req,res)=>{
-    try {
-        const { gymCode } = req.params;
-        const userId = req.params.userId;
-        const gym = await Gym.findOne({ gymCode }).populate('members');
-        if (!gym) {
-            return res.status(404).json({ message: "Gym not found" });
-        }
-        const isMember = gym.members.some(member => member._id.toString() === userId);
-        if (!isMember) {
-            return res.status(403).json({ message: "You are not a member of this gym" });
-        }
-        const currStreak = await updateStreak(userId);
-        return res.status(200).json({message : "Streak updated" , gym  , currStreak:'' + currStreak});
-;
-
-        
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: error.message });
-        
-    }
+    return res.status(410).json({
+      message: "This endpoint is deprecated. Use POST /gym/entry/access with location validation.",
+    });
 } );
 
 router.post("/qr/generate", async (req, res) => {
+  return res.status(410).json({
+    message: "QR-based gym entry is deprecated. Use POST /gym/entry/access with location validation.",
+  });
+});
+
+router.post("/entry/access", async (req, res) => {
   try {
-    const { gymCode } = req.body;
-
-    if (!gymCode) {
-      return res.status(400).json({ message: "gymCode is required" });
-    }
-
-//validation
-    const gym = await Gym.findOne({ gymCode });
-    if (!gym) {
-      return res.status(404).json({ message: "Gym not found" });
-    }
-
-    //payload 
-    const payload = {
-      gymCode,
-      issuedAt: Math.floor(Date.now() / 1000),
-    };
-
-// encryption
-    const encrypted = encryptPayload(payload);
-
-// deep link for app routing
-    const deepLink = `https://preacherclan.in/clan?qr=${encodeURIComponent(
-      encrypted
-    )}`;
-
-    return res.status(200).json({
-      message: "Encrypted QR generated",
-      encrypted,
-      deepLink,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
+    return handleLocationBasedEntryAccess(req, res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
   }
 });
 
-router.post("/streak/scan",  async (req, res) => {
+router.post("/streak/scan", async (req, res) => {
   try {
-    const { encrypted } = req.body;
-    const {userId} = req.body;
-
-
-    if (!encrypted) {
-      return res.status(400).json({ message: "QR data missing" });
-    }
-
-    //Decrypt QR
-    let payload;
-    try {
-      payload = decryptPayload(encrypted);
-    } catch {
-      return res.status(400).json({ message: "Invalid QR code" });
-    }
-
-    const { gymCode, issuedAt } = payload;
-
-   
-
-    // Find gym
-    const gym = await Gym.findOne({ gymCode }).populate("members");
-    if (!gym) {
-      return res.status(404).json({ message: "Gym not found" });
-    }
-
-    // console.log(gym);
-
-    // Membership check
-    const isMember = gym.members.some(
-      (m) => m._id.toString() === userId
-    );
-
-    if (!isMember) {
-      return res.status(403).json({
-        message: "You are not a member of this gym",
-      });
-    }
-
-
-    const currStreak = await updateStreak(userId)
-
-    return res.status(200).json({
-      message: "Streak updated successfully",
-      gym: gym.name,
-      currStreak,
-    });
+    return handleLocationBasedEntryAccess(req, res);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: err.message });

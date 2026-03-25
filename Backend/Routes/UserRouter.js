@@ -20,20 +20,34 @@ router.get('/:userId' , async(req,res)=>{
 
 router.post("/location", async (req, res) => {
   const { latitude, longitude ,userId } = req.body;
+  const authenticatedUserId = req.user?.id || userId;
 
-  if (!latitude || !longitude) {
+  if (
+    !Number.isFinite(Number(latitude)) ||
+    !Number.isFinite(Number(longitude))
+  ) {
     return res.status(400).json({ message: "Invalid coordinates" });
   }
 
-  const user = await User.findByIdAndUpdate(userId, {
+  if (!authenticatedUserId) {
+    return res.status(401).json({ message: "User authentication is required" });
+  }
+
+  if (userId && String(userId) !== String(authenticatedUserId)) {
+    return res.status(403).json({ message: "You can only update your own location" });
+  }
+
+  const user = await User.findByIdAndUpdate(authenticatedUserId, {
     location: {
       type: "Point",
-      coordinates: [longitude, latitude],
+      coordinates: [Number(longitude), Number(latitude)],
       updatedAt: new Date(),
     },
   });
 
-  console.log(user.location);
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
 
   res.json({ success: true });
 });

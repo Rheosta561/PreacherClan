@@ -1,6 +1,47 @@
 
 const mongoose = require('mongoose');
 
+const membershipTypeEnum = ["Monthly", "Quarterly", "HalfYearly", "Yearly"];
+const membershipStatusEnum = ["Active", "Paused", "Expired", "Revoked"];
+
+const gymMembershipSchema = new mongoose.Schema({
+  gymId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Gym",
+  },
+  gymName: {
+    type: String,
+    trim: true,
+  },
+  membershipType: {
+    type: String,
+    enum: membershipTypeEnum,
+  },
+  membershipStatus: {
+    type: String,
+    enum: membershipStatusEnum,
+    default: "Active",
+  },
+  membershipStartsAt: {
+    type: Date,
+  },
+  membershipEndsAt: {
+    type: Date,
+  },
+  joinedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  revokedAt: {
+    type: Date,
+  },
+  revokedReason: {
+    type: String,
+    trim: true,
+    maxlength: 500,
+  },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   username: { type: String, unique: true },
@@ -22,6 +63,14 @@ const userSchema = new mongoose.Schema({
     type: String,
   },
 },
+  gymMembership: {
+    type: gymMembershipSchema,
+    default: undefined,
+  },
+  gymMembershipHistory: {
+    type: [gymMembershipSchema],
+    default: [],
+  },
 
 
   // Roles
@@ -37,9 +86,10 @@ const userSchema = new mongoose.Schema({
 streak: {
   type: {
     count: { type: Number, default: 0 },
-    todayUpdated: { type: Boolean, default: false }
+    todayUpdated: { type: Boolean, default: false },
+    lastUpdatedAt: { type: Date }
   },
-  default: () => ({ count: 0, todayUpdated: false })
+  default: () => ({ count: 0, todayUpdated: false, lastUpdatedAt: null })
 },
   lastWorkout: { type: mongoose.Schema.Types.ObjectId },
   todaysWorkout: { type: mongoose.Schema.Types.ObjectId },
@@ -115,6 +165,9 @@ userSchema.index(
   { location: "2dsphere" },
   { partialFilterExpression: { "location.coordinates": { $exists: true } } }
 );
+
+userSchema.index({ "gym.id": 1, username: 1, email: 1 });
+userSchema.index({ "gymMembership.gymId": 1, "gymMembership.membershipStatus": 1, "gymMembership.membershipType": 1 });
 
 
 module.exports = mongoose.model('User', userSchema);

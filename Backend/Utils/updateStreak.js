@@ -1,23 +1,23 @@
 const User = require("../Models/User");
 const NotificationService = require("../Utils/NotificationService");
 const sendExpoPush = require("./sendExpoPush");
+const { getDateKey } = require("../Services/entryLogsService");
 
 const updateStreak = async (userId) => {
   try {
     const user = await User.findById(userId);
     if (!user) throw new Error("User not found");
 
-    // Already updated today
-    if (user.streak.todayUpdated) {
-      await NotificationService.sendNotification(
-        user,
-        "You have already updated your streak for today. Keep up the good work! 💪",
-        "Streak Already Updated",
-        "info",
-        "BATTLEFORGE"
-      );
+    const currentDateKey = getDateKey(new Date());
+    const lastUpdatedKey = user.streak?.lastUpdatedAt ? getDateKey(user.streak.lastUpdatedAt) : null;
+    const alreadyUpdatedToday = user.streak?.todayUpdated && lastUpdatedKey === currentDateKey;
 
-      return user.streak.count || 0;
+    if (alreadyUpdatedToday) {
+      return {
+        streakCount: user.streak.count || 0,
+        updatedToday: false,
+        workoutHitsPerWeek: user.workoutHitsPerWeek || 0,
+      };
     }
 
     const currStreak = user.streak.count || 0;
@@ -26,6 +26,7 @@ const updateStreak = async (userId) => {
     user.workoutHitsPerWeek = weeklyHits + 1;
     user.streak.count = currStreak + 1;
     user.streak.todayUpdated = true;
+    user.streak.lastUpdatedAt = new Date();
 
     await user.save();
 
@@ -50,7 +51,11 @@ const updateStreak = async (userId) => {
       "BATTLEFORGE"
     );
 
-    return user.streak.count;
+    return {
+      streakCount: user.streak.count,
+      updatedToday: true,
+      workoutHitsPerWeek: user.workoutHitsPerWeek,
+    };
   } catch (error) {
     console.error("Error updating streak:", error);
     throw error;

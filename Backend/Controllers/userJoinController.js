@@ -23,6 +23,8 @@ const joinController = async (req, res) => {
         .json({ message: "User already joined a gym", user });
     }
 
+    const joinedAt = new Date();
+
     // Atomic updates (NO DUPLICATES)
     await Promise.all([
       User.findByIdAndUpdate(
@@ -31,6 +33,16 @@ const joinController = async (req, res) => {
           gym: {
             id: foundGym._id,
             name: foundGym.name,
+          },
+          gymMembership: {
+            gymId: foundGym._id,
+            gymName: foundGym.name,
+            membershipStatus: "Active",
+            membershipStartsAt: joinedAt,
+            membershipEndsAt: null,
+            joinedAt,
+            revokedAt: null,
+            revokedReason: null,
           },
         },
         { new: true }

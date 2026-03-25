@@ -1,4 +1,5 @@
 const express = require('express');
+const env = require('./config/env');
 const app = express();
 const conn = require('./Connection/Connection');
 const ProfileRoutes = require('./Routes/ProfileRoutes');
@@ -28,6 +29,20 @@ initSocket(server);
 const NotificationRouter = require('./Routes/NotificationRouter');
 const chatRouter = require('./Routes/ChatRoutes');
 const messageRouter = require('./Routes/MessageRoutes');
+const gymAuthRoutes = require('./Routes/gymAuthRoutes');
+const gymMembersRoutes = require('./Routes/gymMembersRoutes');
+const gymOverviewRoutes = require('./Routes/gymOverviewRoutes');
+const gymTrainersRoutes = require('./Routes/gymTrainersRoutes');
+const entryLogsRoutes = require('./Routes/entryLogsRoutes');
+const maintenanceRoutes = require('./Routes/maintenanceRoutes');
+const announcementRoutes = require('./Routes/announcementRoutes');
+const gymProfileRoutes = require('./Routes/gymProfileRoutes');
+const reviewRoutes = require('./Routes/reviewRoutes');
+const gymReviewRoutes = require('./Routes/gymReviewRoutes');
+const grievanceRoutes = require('./Routes/grievanceRoutes');
+const gymGrievanceRoutes = require('./Routes/gymGrievanceRoutes');
+const internalGrievanceRoutes = require('./Routes/internalGrievanceRoutes');
+const { errorHandler: gymAuthErrorHandler } = require('./Controllers/gymAuthController');
 
 
 const searchRouter = require('./Routes/searchRoutes');
@@ -58,7 +73,11 @@ const {userImage} = require('./Manipulations/UserImage');
 require("./config/passport");
 app.use(passport.initialize());
 app.use(useragent.express());
-app.use(cors());
+app.use(cors(env.cors));
+app.options('*', cors(env.cors));
+if (env.isProduction) {
+    app.set('trust proxy', 1);
+}
 resetJobs.setupResetJobs();
 
 const authMiddleware = require('./Middleware/auth');
@@ -79,6 +98,19 @@ cron.schedule('0 0 * * *', () => {
 app.get('/' , (req,res)=>{
     res.send('Preacher Clan Backend is working');
 });
+app.use('/api/gym-auth', cors(env.cors), gymAuthRoutes);
+app.use('/api/gym', cors(env.cors), gymMembersRoutes);
+app.use('/api/gym', cors(env.cors), gymOverviewRoutes);
+app.use('/api/gym', cors(env.cors), gymTrainersRoutes);
+app.use('/api/gym', cors(env.cors), entryLogsRoutes);
+app.use('/api/gym', cors(env.cors), maintenanceRoutes);
+app.use('/api/gym', cors(env.cors), announcementRoutes);
+app.use('/api/gym', cors(env.cors), gymProfileRoutes);
+app.use('/api/gym', cors(env.cors), gymReviewRoutes);
+app.use('/api/gym', cors(env.cors), gymGrievanceRoutes);
+app.use('/api/reviews', cors(env.cors), reviewRoutes);
+app.use('/api/grievances', cors(env.cors), grievanceRoutes);
+app.use('/api/internal', internalGrievanceRoutes);
 app.use('/auth', authRoutes );
 app.use('/profile', authMiddleware , ProfileRoutes);
 app.use('/gym', authMiddleware ,  GymRoutes);
@@ -106,6 +138,7 @@ app.use('/split' , authMiddleware , splitRouter);
 
 // admin routes 
 app.use('/admin', adminRouter);
+app.use(gymAuthErrorHandler);
 
 
 // testing mails
