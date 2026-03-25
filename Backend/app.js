@@ -73,6 +73,14 @@ const {userImage} = require('./Manipulations/UserImage');
 require("./config/passport");
 app.use(passport.initialize());
 app.use(useragent.express());
+
+// ensure cross-origin cookie/iframe/postMessage behavior works for frontend domains
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+  next();
+});
+
 app.use(cors(env.cors));
 app.options('*', cors(env.cors));
 if (env.isProduction) {
