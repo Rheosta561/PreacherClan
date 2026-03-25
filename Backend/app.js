@@ -81,8 +81,19 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors(env.cors));
-app.options('*', cors(env.cors));
+// Allow all origins + credentials to support any frontend origin for now
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
+app.options('*', cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
 if (env.isProduction) {
     app.set('trust proxy', 1);
 }
