@@ -21,6 +21,7 @@ const getProfiles = async (req, res) => {
       about: user.profile ? user.profile.about : null,
       socialHandles: user.profile ? user.profile.socialHandles : {},
       fitnessGoals: user.profile ? user.profile.fitnessGoals : [],
+      timings: user.profile ? user.profile.timings : "",
       ambition: user.profile ? user.profile.ambition : [],
       exerciseGenre: user.profile ? user.profile.exerciseGenre : [],
       preacherRank: user.profile ? user.profile.preacherRank : 0,
@@ -150,6 +151,7 @@ const getProfileById = async (req, res) => {
       about: u.profile?.about || null,
       socialHandles: u.profile?.socialHandles || {},
       fitnessGoals: u.profile?.fitnessGoals || [],
+      timings: u.profile?.timings || "",
       ambition: u.profile?.ambition || [],
       exerciseGenre: u.profile?.exerciseGenre || [],
       preacherRank: u.profile?.preacherRank || 0,
@@ -244,7 +246,7 @@ const getTopPreachersOfTown = async (req, res) => {
       isVerified: u.isVerified,
       isTrainer: u.isTrainer,
       gym: u.gym || null,
-      timings: u.profile?.timngs || "Flexible",
+      timings: u.profile?.timings || "Flexible",
       fitnessGoals: u.profile?.fitnessGoals || [],
     }));
 

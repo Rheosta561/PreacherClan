@@ -6,7 +6,7 @@ exports.requestAccepter = async(req,res) =>{
     try {
         const {userId, requestId} = req.params;
         const request = await Request.findOneAndUpdate(
-            {_id:requestId }, { status: "accepted" } , { new: true }
+            {_id:requestId, receiver: userId, status: "pending" }, { status: "accepted" } , { new: true }
         );
         if (!request) {
             return res.status(404).json({ message: "Request not found" });
@@ -17,6 +17,7 @@ exports.requestAccepter = async(req,res) =>{
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
+        await User.findByIdAndUpdate(request.sender, {$addToSet: { partner: userId }});
         return res.status(200).json({ message: "Request accepted successfully", user });
 
 
@@ -31,7 +32,7 @@ exports.requestRejecter = async(req,res) =>{
     try {
         const {userId, requestId} = req.params;
         const request = await Request.findOneAndUpdate(
-            {_id:requestId }, { status: "rejected" } , { new: true }
+            {_id:requestId, receiver: userId, status: "pending" }, { status: "rejected" } , { new: true }
         );
         if (!request) {
             return res.status(404).json({ message: "Request not found" });
@@ -96,13 +97,12 @@ exports.getRequests = async(req,res) =>{
     try {
         const {userId} = req.params;
         const requests = await Request.find({
-            receiver: userId,
+            $or: [{ receiver: userId }, { sender: userId }],
             status: "pending"
-        }).populate('sender');
-        
-        if (!requests) {
-            return res.status(404).json({ message: "No requests found" });
-        }
+        })
+            .populate({ path: 'sender', populate: [{ path: 'profile' }, { path: 'gym', select: '_id name' }] })
+            .populate({ path: 'receiver', populate: [{ path: 'profile' }, { path: 'gym', select: '_id name' }] })
+            .sort({ createdAt: -1 });
         
         return res.status(200).json({ requests });
 
