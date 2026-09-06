@@ -125,14 +125,17 @@ const joinController = async(req,res)=>{
 </body>
 </html>
 `
-        await sendEmail(
-             user.email,
-             `Welcome to ${foundGym.name}`,
-             htmlContent
-        );
         const gym = await Gym.findById(foundGym._id).populate('members');
-       
-        return res.status(200).json({message:"User joined gym successfully", user, gym});
+
+           res.status(200).json({message:"User joined gym successfully", user, gym});
+
+           void sendEmail(
+               user.email,
+               `Welcome to ${foundGym.name}`,
+               htmlContent
+           );
+
+           return;
 
         
         
