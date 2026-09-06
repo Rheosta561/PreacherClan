@@ -31,8 +31,12 @@ exports.googleCredentialAuth = async (req, res) => {
     }
 
     const googleUser = await googleResponse.json();
-    const configuredClientId = process.env.GOOGLE_CLIENT_ID;
-    if (configuredClientId && googleUser.aud !== configuredClientId) {
+    const trustedClientIds = [
+      process.env.GOOGLE_CLIENT_ID,
+      ...(process.env.GOOGLE_CLIENT_IDS || '').split(','),
+    ].map((value) => value.trim()).filter(Boolean);
+
+    if (trustedClientIds.length > 0 && !trustedClientIds.includes(googleUser.aud)) {
       return res.status(401).json({ message: 'Google ID token audience mismatch' });
     }
 
