@@ -79,7 +79,7 @@ const ensureUserCanReviewGym = async (userId, gymId) => {
   }
 
   const isGymMember = gym.members.some((id) => id.toString() === String(userId));
-  const userBelongsToGym = String(user.gym?.id || "") === String(gymId);
+  const userBelongsToGym = String(user.gym?._id || user.gym || "") === String(gymId);
   if (!isGymMember || !userBelongsToGym) {
     throw new AppError("Only gym members can review this gym", 403);
   }

@@ -1,3 +1,5 @@
-import { randomUUID } from "crypto";
+const { randomUUID } = require("crypto");
 
-export const generateSplitId = () => randomUUID();
+const generateSplitId = () => randomUUID();
+
+module.exports = { generateSplitId };

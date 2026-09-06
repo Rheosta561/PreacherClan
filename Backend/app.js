@@ -54,6 +54,7 @@ app.get('/' , (req,res)=>{
 app.use('/auth', authRoutes );
 app.use('/gym/auth', GymAuthRoutes);
 app.use('/profile', ProfileRoutes);
+app.use('/gym', GymRoutes);
 app.use('/gym', GymOverviewRoutes);
 app.use('/gym', GymMembersRoutes);
 app.use('/gym', GymTrainersRoutes);
@@ -61,7 +62,6 @@ app.use('/gym', GymProfileRoutes);
 app.use('/gym', GymReviewRoutes);
 app.use('/gym', AnnouncementRoutes);
 app.use('/gym', EntryLogsRoutes);
-app.use('/gym', GymRoutes);
 app.use('/join', JoinGymRoutes);
 app.use('/requests' , requestHandlerRouter);
 app.use('/user', userRouter);

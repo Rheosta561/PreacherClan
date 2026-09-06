@@ -4,8 +4,9 @@ const ReviewSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     gymId: { type: mongoose.Schema.Types.ObjectId, ref: "Gym", required: true },
     rating: { type: Number, required: true },
-    review: { type: String, required: true }
-});
+    comment: { type: String, required: true },
+    images: [{ type: String }],
+}, { timestamps: true });
 
 const Review = mongoose.model("Review", ReviewSchema);
 

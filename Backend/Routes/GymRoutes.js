@@ -14,7 +14,7 @@ const gymPopulation = [
 
 router.get('/featured', async (req, res) => {
     try {
-        const gyms = await Gym.find({ rating: { $gte: 4.5 } }).sort({ rating: -1 }).limit(20);
+        const gyms = await Gym.find({ $or: [{ featured: true }, { rating: { $gte: 4.5 } }] }).sort({ featured: -1, rating: -1 }).limit(20);
         res.status(200).json({ gyms });
     } catch (error) {
         console.error(error);
@@ -22,7 +22,7 @@ router.get('/featured', async (req, res) => {
     }
 });
 
-router.get('/:gymId', async (req, res) => {
+router.get('/:gymId([0-9a-fA-F]{24})', async (req, res) => {
     try {
         const gym = await Gym.findById(req.params.gymId).populate(gymPopulation);
         if (!gym) {
@@ -32,7 +32,7 @@ router.get('/:gymId', async (req, res) => {
         return res.status(200).json({ gym });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message })
     }
 });
 
@@ -75,7 +75,6 @@ router.post('/entry/access', authMiddleware, async (req, res) => {
                 createdBy: { actorType: 'user', actorId: user._id },
             });
             user.streak = (user.streak || 0) + 1;
-            user.lastWorkout = new Date();
             await user.save();
         }
 
