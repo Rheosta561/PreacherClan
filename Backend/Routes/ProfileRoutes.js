@@ -29,10 +29,15 @@ router.post("/:userId", async (req, res) => {
 router.get("/:userId", async (req, res) => {
     try {
         const profile = await Profile.findOne({ userId: req.params.userId })
+            .populate({
+                path: "userId",
+                select: "name username email preacherScore isVerified isTrainer isAdmin streak partner",
+                populate: { path: "partner", select: "name username profileImage preacherScore" },
+            });
         if (!profile) {
             return res.status(404).json({ message: "Profile not found" });
         }
-        res.json(profile);
+        res.json({ profile });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
