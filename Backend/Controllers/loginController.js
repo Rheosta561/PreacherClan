@@ -1,384 +1,225 @@
-const User = require("../Models/User");
-const bcrypt = require("bcrypt");
-const nodemailer = require("nodemailer");
-
-const generateTokens = require("../Utils/generateTokens");
-const hashToken = require("../Utils/hashToken");
-const generateUsername = require('../Utils/generateUsername');
-const crypto = require("crypto");
-
-const generateSecurePassword = () => {
-  const randomPart = crypto.randomBytes(4).toString("hex"); // 8 chars
-  return `preacher${randomPart}`; 
-};
-
-const {sendEmail}= require('../Utils/emailService');
-
-
-require("dotenv").config();
-const { OAuth2Client } = require("google-auth-library");
-
-
-
-const client = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
-
-/**
- * GOOGLE LOGIN / SIGNUP
- * mobile + web supported
- */
-exports.googleAuthentication = async (req, res) => {
-  try {
-    console.log('google auth starts');
-    const { idToken, mobileUser } = req.body;
-    if (!idToken) {
-      return res.status(400).json({ error: "Google token missing" });
+const User = require('../Models/User');
+const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.EMAIL,  
+        pass: process.env.PASS      
     }
+});
 
-    // Verify token with Google
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_WEB_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const {
-      sub: googleId,
-      email,
-      name,
-      picture,
-    } = payload;
-
-    // onboarding chcek 
-    let isNewUser = false; 
-
-    // Find existing user
-    let user = await User.findOne({
-      $or: [{ googleId }, { email }],
-    });
-
-    const username = await generateUsername({ name, email });
-
-
-    
-    if (!user) {
-      user = await User.create({
-        name,
-        email,
-        username,
-        googleId,
-        provider: "google",
-        profileImage: picture,
-      });
-
-      sendEmail(
-        email,
-        "Welcome to Preacher Clan ⚔️",
-        `<p>Welcome <b>${name}</b> to Preacher Clan</p>`
-      );
+const sendEmail = async (to, subject, html) => {
+    try {
+        await transporter.sendMail({
+            from: process.env.EMAIL,
+            to,
+            subject,
+            html
+        });
+    } catch (error) {
+        console.error("Error sending email:", error.message);
     }
-
-    // Generate tokens
-    const { accessToken, refreshToken } = generateTokens({
-      userId: user._id,
-      role: user.role,
-    });
-
-    user.refreshTokenHash = hashToken(refreshToken);
-    await user.save();
-
-    const { password, refreshTokenHash, ...safeUser } = user.toObject();
-
-    // Mobile vs Web
-    if (mobileUser) {
-      return res.json({
-        message: "Google login successful",
-        accessToken,
-        refreshToken,
-        user: safeUser,
-      });
-    }
-
-    setAccessCookie(res, accessToken);
-    return res.json({
-      message: "Google login successful",
-      user: safeUser,
-    });
-
-  } catch (err) {
-    console.error("Google auth error:", err);
-    return res.status(401).json({ error: "Google authentication failed" });
-  }
 };
-
-// email setup 
-
-
-
-// cookiehelper 
-
-const setAccessCookie = (res, token) => {
-  res.cookie("accessToken", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production", 
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    maxAge: 15 * 60 * 1000,
-  });
-};
-
-
-// login
 
 exports.login = async (req, res) => {
-  try {
-    const { username, email, password, mobileUser } = req.body;
-    const isMobileUser = mobileUser === true;
+    try {
+        const { username, password } = req.body;
+        const user = await User.findOne({ username });
 
-    let user = await User.findOne({ username }) || await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+        if (!user) {
+            return res.status(404).json({ error: "User not found", code: "404" });
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: "Access Denied", code: "401" });
+        }
+
+        // Get login details
+        const ipAddress = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+        const device = `${req.useragent.platform} - ${req.useragent.browser}`;
+        const time = new Date().toLocaleString();
+
+        // Email content
+        const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; background: #f4f4f4; }
+                .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 10px; background: #f9f9f9; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+                .header { text-align: center; padding: 10px; background: #000000; color: white; border-radius: 10px 10px 0 0; }
+                .content { padding: 20px; color: #333; }
+                .footer { text-align: center; padding: 10px; font-size: 0.9rem; color: #888; border-top: 1px solid #ccc; margin-top: 20px; }
+                .logo { height: 50px; width: 50px; border-radius: 0.5rem; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
+                </div>
+                <div class="content">
+                    <p><b>Hi ${username},</b></p>
+                    <p>We noticed a new login to your <b>Preacher Clan</b> account.</p>
+                    <p><b>Login Details:</b></p>
+                    <p><b>Device:</b> ${device}</p>
+                    <p><b>IP Address:</b> ${ipAddress}</p>
+                    <p><b>Time:</b> ${time}</p>
+                    <hr>
+                    <p>If this was you, no further action is required.</p>
+                    <p>If you didn’t log in, please reset your password immediately.</p>
+                    <p>Stay safe and secure!</p>
+                    <p><b>Team Preacher Clan</b></p>
+                </div>
+            </div>
+        </body>
+        </html>`;
+
+        await sendEmail(user.email, "Login Alert", htmlContent);
+
+        return res.status(200).json({ user, message: "Access Granted" });
+
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-    const { accessToken, refreshToken } = generateTokens({
-      userId: user._id,
-      role: user.role,
-    });
-    user.refreshTokenHash = hashToken(refreshToken);
-    await user.save();
-
-// alert login email 
-    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-    const device = `${req.useragent?.platform || "Unknown"} - ${req.useragent?.browser || "Unknown"}`;
-    const time = new Date().toLocaleString();
-
-   sendEmail(
-      user.email,
-      "New Login Alert – Preacher Clan",
-      `<p>New login detected</p>
-       <p><b>Device:</b> ${device}</p>
-       <p><b>IP:</b> ${ip}</p>
-       <p><b>Time:</b> ${time}</p>`
-    );
-
-    const { password: _, refreshTokenHash, ...safeUser } = user.toObject();
-
-// mobile 
-    if (isMobileUser) {
-      return res.json({
-        message: "Login successful",
-        accessToken,
-        refreshToken,
-        user: safeUser,
-      });
-    }
-
-// web 
-    setAccessCookie(res, accessToken);
-     return res.json({
-        message: "Login successful",
-        accessToken,
-        refreshToken,
-        user: safeUser,
-      });
-
-  } catch (err) {
-    console.error("Login error:", err);
-    return res.status(500).json({ error: "Login failed" });
-  }
 };
 
-// signup 
+exports.signUp= async(req,res)=>{
+    try {
+        const{name , email ,username,password}= req.body;
+        const existingUser = await User.findOne({username});
+        if(existingUser){
+            res.status(401).json({error:"Username already exists"});
+        }
+        const newUser = await User.create({
+            name,
+            email,
+            username,
+            password: await bcrypt.hash(password,10)
+        });
+        const htmlContent = `
+           <!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 0;
+                background: #f4f4f4;
+            }
+            .container {
+                max-width: 600px;
+                margin: 20px auto;
+                padding: 20px;
+                border: 1px solid #ccc;
+                border-radius: 10px;
+                background: #f9f9f9;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+                text-align: center;
+                padding: 10px;
+                background: #000000;
+                color: white;
+                border-radius: 10px 10px 0 0;
+                overflow: hidden;
+            }
+            .content {
+                padding: 20px;
+                color: #333;
+            }
+            .otp {
+                font-size: 1.5rem;
+                color: #ba047e;
+                font-weight: bold;
+                text-align: center;
+                display: block;
+                margin: 20px 0;
+            }
+            .footer {
+                text-align: center;
+                padding: 10px;
+                font-size: 0.9rem;
+                color: #888;
+                border-top: 1px solid #ccc;
+                margin-top: 20px;
+            }
+            .logo {
+                height: 50%;
+                width: 50%;
+                transform: scale(1.2);
+                border-radius: 0.5rem;
+            }
 
-exports.signUp = async (req, res) => {
-  try {
-    const { name, email, username, password, mobileUser } = req.body;
+            /* Media Query for Smaller Screens */
+            @media screen and (max-width: 768px) {
+                .container {
+                    margin: 10px;
+                    padding: 15px;
+                }
+                .content {
+                    padding: 15px;
+                }
+                .otp {
+                    font-size: 1.25rem;
+                }
+                .logo {
+                    width: 60%;
+                    transform: scale(1);
+                    height: 50%;
+                }
+            }
 
-    if (!name || !email || !username || !password) {
-      return res.status(400).json({ error: "All fields required" });
+            @media screen and (max-width: 480px) {
+                .container {
+                    margin: 10px;
+                    padding: 10px;
+                }
+                .content {
+                    padding: 10px;
+                }
+                .otp {
+                    font-size: 1rem;
+                }
+                .logo {
+                    width: 70%;
+                    height: 50%;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
+            </div>
+            <div class="content">
+                <p><b>Hi ${username},</b></p>
+                <p>Welcome to <b>Preacher Clan</b>! We are thrilled to have you join our growing community of fitness enthusiasts.</p>
+                <p>Preacher Clan is all about collecting ideas from workout lovers to revolutionize fitness in India. Our vision is to build a strong and supportive community where fitness is not just a routine but a movement.</p>
+                
+                <hr>
+                <p>We're here to support you on your fitness journey—let’s push together for <strong>" Ek Rep Aur "</strong> !</p>
+                <p>See you at the top,</p>
+                <p><b>Team Preacher Clan</b></p>
+
+            </div>
+    
+
+        `;
+
+        await sendEmail(email, "Welcome to PreacherClan!", htmlContent);
+
+        res.status(200).json({user:newUser, message:"Registered Successfully"});
+        
+    } catch (error) {
+        res.status(404).json({error:"Something went wrong" , message:"Something went wrong"});
+        console.log(error.message);
+        
     }
-
-    const exists = await User.findOne({ username });
-    const emailExists = await User.findOne({email});
-    if (exists) {
-      return res.status(409).json({ error: "Username already exists" });
-    }
-    if(emailExists){
-      return res.status(409).json({error : 'Email Already exists '});
-    }
-
-    const user = await User.create({
-      name,
-      email,
-      username,
-      password: await bcrypt.hash(password, 10),
-    });
-
-    const { accessToken, refreshToken } = generateTokens({
-      userId: user._id,
-      role: user.role,
-    });
-
-    user.refreshTokenHash = hashToken(refreshToken);
-    await user.save();
-
-    sendEmail(
-      email,
-      "Welcome to Preacher Clan",
-      `<p>Welcome <b>${username}</b> to Preacher Clan ⚔️</p>`
-    );
-
-    const { password: _, refreshTokenHash, ...safeUser } = user.toObject();
-
-    if (mobileUser) {
-      return res.status(201).json({
-        message: "Signup successful",
-        accessToken,
-        refreshToken,
-        user: safeUser,
-      });
-    }
-
-    setAccessCookie(res, accessToken);
-    return res.redirect("https://preacherclan.vercel.app/dashboard");
-
-  } catch (err) {
-    console.error("Signup error:", err);
-    return res.status(500).json({ error: "Signup failed" });
-  }
-};
-
-// refreshOTken and refresh session 
-
-exports.refreshToken = async (req, res) => {
-  try {
-    const refreshToken = req.body.refreshToken;
-    if (!refreshToken) {
-      return res.status(401).json({ error: "Refresh token missing" });
-    }
-
-    const decoded = require("jsonwebtoken").verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
-
-    const user = await User.findById(decoded.sub).select("+refreshTokenHash");
-    if (!user || user.refreshTokenHash !== hashToken(refreshToken)) {
-      return res.status(403).json({ error: "Invalid refresh token" });
-    }
-
-    const tokens = generateTokens({
-      userId: user._id,
-      role: user.role,
-    });
-
-    user.refreshTokenHash = hashToken(tokens.refreshToken);
-    await user.save();
-
-    setAccessCookie(res, tokens.accessToken);
-
-    return res.json(tokens);
-  } catch (err) {
-    return res.status(403).json({ error: "Token expired" });
-  }
-};
-
-// logout
-
-exports.logout = (req, res) => {
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    sameSite: "none",
-    secure: true,
-  });
-
-  return res.json({ message: "Logged out" });
-};
-
-
-// change pass
-exports.changePassword = async (req, res) => {
-  try {
-    const { email, previousPassword, newPassword } = req.body;
-
-    if (!email || !previousPassword || !newPassword) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-
-    const user = await User.findOne({ email }).select("+password");
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const isMatch = await bcrypt.compare(previousPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: "Previous password is incorrect" });
-    }
-
-    const isSamePassword = await bcrypt.compare(newPassword, user.password);
-    if (isSamePassword) {
-      return res.status(400).json({ error: "New password must be different" });
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
-
-    // Email alert
-    await sendEmail(
-      email,
-      "Password Changed – Preacher Clan",
-      `
-        <p>Your password was successfully changed.</p>
-        <p>If this wasn’t you, please reset your password immediately.</p>
-      `
-    );
-
-    return res.json({ message: "Password changed successfully" });
-
-  } catch (err) {
-    console.error("Change password error:", err);
-    return res.status(500).json({ error: "Failed to change password" });
-  }
-};
-
-
-// reset password 
-exports.resetPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const newPassword = generateSecurePassword();
-    user.password = await bcrypt.hash(newPassword, 10);
-    await user.save();
-
-    // Send email with new password
-    await sendEmail(
-      email,
-      "Password Reset – Preacher Clan ⚔️",
-      `
-        <p>Your password has been reset.</p>
-        <p><b>New Password:</b> <code>${newPassword}</code></p>
-        <p>Please log in and change it immediately.</p>
-      `
-    );
-
-    return res.json({
-      message: "New password sent to your email",
-    });
-
-  } catch (err) {
-    console.error("Reset password error:", err);
-    return res.status(500).json({ error: "Failed to reset password" });
-  }
-};
+}

@@ -1,5 +1,4 @@
 const express = require('express');
-const env = require('./config/env');
 const app = express();
 const conn = require('./Connection/Connection');
 const ProfileRoutes = require('./Routes/ProfileRoutes');
@@ -11,217 +10,73 @@ const userRouter = require('./Routes/UserRouter');
 const http = require('http');
 const { Server } = require('socket.io');
 const server = http.createServer(app);
-const requests = require('./Models/Requests');
-const repmateRouter = require('./Routes/RepmateRouter');
-const challengeRouter = require('./Routes/ChallengeRoutes');
-const jamRouter = require('./Routes/WorkoutJamRoutes');
-const User = require('./Models/User');
-const sendExpoPush = require('./Utils/sendExpoPush');
-const splitRouter = require('./Routes/WorkoutSplitRouter');
-const adminRouter = require('./Routes/AdminRoutes');
-
-
-const cookieParser = require('cookie-parser');
 const {initSocket} = require('./socket');
 initSocket(server);
-// const client = require('./Connection/RedisConnection');
-
 const NotificationRouter = require('./Routes/NotificationRouter');
-const chatRouter = require('./Routes/ChatRoutes');
-const messageRouter = require('./Routes/MessageRoutes');
-const gymAuthRoutes = require('./Routes/gymAuthRoutes');
-const gymMembersRoutes = require('./Routes/gymMembersRoutes');
-const gymOverviewRoutes = require('./Routes/gymOverviewRoutes');
-const gymTrainersRoutes = require('./Routes/gymTrainersRoutes');
-const entryLogsRoutes = require('./Routes/entryLogsRoutes');
-const maintenanceRoutes = require('./Routes/maintenanceRoutes');
-const announcementRoutes = require('./Routes/announcementRoutes');
-const gymProfileRoutes = require('./Routes/gymProfileRoutes');
-const reviewRoutes = require('./Routes/reviewRoutes');
-const gymReviewRoutes = require('./Routes/gymReviewRoutes');
-const grievanceRoutes = require('./Routes/grievanceRoutes');
-const gymGrievanceRoutes = require('./Routes/gymGrievanceRoutes');
-const internalGrievanceRoutes = require('./Routes/internalGrievanceRoutes');
-const { errorHandler: gymAuthErrorHandler } = require('./Controllers/gymAuthController');
+const ChatRoutes = require('./Routes/ChatRoutes');
+const MessageRoutes = require('./Routes/MessageRoutes');
+const ChallengeRoutes = require('./Routes/ChallengeRoutes');
+const RepmateRouter = require('./Routes/RepmateRouter');
+const WorkoutJamRoutes = require('./Routes/WorkoutJamRoutes');
+const WorkoutPlanRoutes = require('./Routes/WorkoutPlanRoutes');
+const WorkoutSplitRouter = require('./Routes/WorkoutSplitRouter');
+const SearchRoutes = require('./Routes/searchRoutes');
+const ReviewRoutes = require('./Routes/reviewRoutes');
+const GrievanceRoutes = require('./Routes/grievanceRoutes');
+const GymAuthRoutes = require('./Routes/gymAuthRoutes');
+const GymOverviewRoutes = require('./Routes/gymOverviewRoutes');
+const GymMembersRoutes = require('./Routes/gymMembersRoutes');
+const GymTrainersRoutes = require('./Routes/gymTrainersRoutes');
+const GymProfileRoutes = require('./Routes/gymProfileRoutes');
+const GymReviewRoutes = require('./Routes/gymReviewRoutes');
+const AnnouncementRoutes = require('./Routes/announcementRoutes');
+const EntryLogsRoutes = require('./Routes/entryLogsRoutes');
 
-
-const searchRouter = require('./Routes/searchRoutes');
-
-// middleware
-
-
-// const deleteRequests = async(req,res)=>{
-//     try {
-//         const deletedRequests = await requests.deleteMany();
-//        console.log(`Deleted ${deletedRequests.deletedCount} rejected requests`);
-//     } catch (error) {
-//         console.error("Error deleting rejected requests:", error);
-//     }
-// }
-// deleteRequests();
 
 
 conn();
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
-app.use(cookieParser());
 const authRoutes = require('./Routes/AuthRoutes');
 const JoinGymRoutes = require('./Routes/joinGymRouter');
 const passport = require("passport");
 const resetJobs = require("./Utils/resetJobs");
-const {userImage} = require('./Manipulations/UserImage');
 require("./config/passport");
 app.use(passport.initialize());
 app.use(useragent.express());
-
-// ensure cross-origin cookie/iframe/postMessage behavior works for frontend domains
-app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
-  next();
-});
-
-// Allow all origins + credentials to support any frontend origin for now
-app.use(cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-}));
-app.options('*', cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-}));
-if (env.isProduction) {
-    app.set('trust proxy', 1);
-}
+app.use(cors());
 resetJobs.setupResetJobs();
-
-const authMiddleware = require('./Middleware/auth');
-
-
-const resetStreak = require('./Utils/resetStreak');
-const cron = require('node-cron');
-const { sendEmail } = require('./Utils/emailService');
-cron.schedule('0 0 * * *', () => {
-    console.log('Running streak reset job at midnight');
-    resetStreak();
-}, {
-    timezone: "Asia/Kolkata"
-});
-
 
 
 app.get('/' , (req,res)=>{
     res.send('Preacher Clan Backend is working');
 });
-app.use('/api/gym-auth', gymAuthRoutes);
-app.use('/api/gym',  gymMembersRoutes);
-app.use('/api/gym',  gymOverviewRoutes);
-app.use('/api/gym',  gymTrainersRoutes);
-app.use('/api/gym',  entryLogsRoutes);
-app.use('/api/gym',  maintenanceRoutes);
-app.use('/api/gym',  announcementRoutes);
-app.use('/api/gym',  gymProfileRoutes);
-app.use('/api/gym',  gymReviewRoutes);
-app.use('/api/gym',  gymGrievanceRoutes);
-app.use('/api/reviews',  reviewRoutes);
-app.use('/api/grievances',  grievanceRoutes);
-app.use('/api/internal', internalGrievanceRoutes);
 app.use('/auth', authRoutes );
-app.use('/profile', authMiddleware , ProfileRoutes);
-app.use('/gym', authMiddleware ,  GymRoutes);
-app.use('/join', authMiddleware , JoinGymRoutes);
-app.use('/requests' , authMiddleware , requestHandlerRouter);
-app.use('/user', authMiddleware , userRouter);
-app.use('/notifications', authMiddleware , NotificationRouter);
-app.use('/repmate' , authMiddleware , repmateRouter); 
-
-app.use('/chat', authMiddleware , chatRouter);
-app.use('/message' , authMiddleware , messageRouter );
-
-app.use('/search', authMiddleware , searchRouter);
-
-
-// challenge routes
-app.use('/challenge', authMiddleware ,  challengeRouter);
-
-
-// jam routes
-app.use('/jam', authMiddleware , jamRouter);
-
-// split routes 
-app.use('/split' , authMiddleware , splitRouter);
-
-// admin routes 
-app.use('/admin', adminRouter);
-app.use(gymAuthErrorHandler);
-
-
-// testing mails
-app.post('/test-email', async(req, res)=>{
-  try {
-    const {receiverId , content}= req.body ;
-  await sendEmail(receiverId , 'sample email ' , `<p>Welcome <b>${content}</b> to Preacher Clan</p>`);
-  return res.status(200).json({message : "Successfully sent email"});
-  } catch (error) {
-    return res.status(404).json({error : error.message});
-    
-  }
-
-  
-});
-
-
-
-//  testing notifications 
-app.post("/test/:buddyId",  async (req, res) => {
-  try {
-    const buddyId  = req.params.buddyId ; 
-
-    if (!buddyId) {
-      return res.status(400).json({ message: "buddyId is required" })
-    }
-
-    const buddy = await User.findById(buddyId)
-
-    if (!buddy?.pushToken) {
-      return res.json({
-        skipped: true,
-        reason: "No push token found for user",
-      })
-    }
-
-    await sendExpoPush({
-      to: buddy.pushToken,
-      title: "Ek Rep Aur 💪",
-      body: "Test notification from Postman",
-      data: {
-        type: "WORKOUT_UPDATE",
-      },
-    })
-
-    res.json({ sent: true })
-  } catch (err) {
-    console.error("❌ Push error:", err)
-    res.status(500).json({ message: "Push test failed" })
-  }
-})
-
-
-
-
-
-
-
-
-
-
-
-
-
+app.use('/gym/auth', GymAuthRoutes);
+app.use('/profile', ProfileRoutes);
+app.use('/gym', GymOverviewRoutes);
+app.use('/gym', GymMembersRoutes);
+app.use('/gym', GymTrainersRoutes);
+app.use('/gym', GymProfileRoutes);
+app.use('/gym', GymReviewRoutes);
+app.use('/gym', AnnouncementRoutes);
+app.use('/gym', EntryLogsRoutes);
+app.use('/gym', GymRoutes);
+app.use('/join', JoinGymRoutes);
+app.use('/requests' , requestHandlerRouter);
+app.use('/user', userRouter);
+app.use('/notifications', NotificationRouter);
+app.use('/chat', ChatRoutes);
+app.use('/message', MessageRoutes);
+app.use('/challenge', ChallengeRoutes);
+app.use('/repmate', RepmateRouter);
+app.use('/workout-jam', WorkoutJamRoutes);
+app.use('/jam', WorkoutJamRoutes);
+app.use('/workout-plan', WorkoutPlanRoutes);
+app.use('/split', WorkoutSplitRouter);
+app.use('/search', SearchRoutes);
+app.use('/review', ReviewRoutes);
+app.use('/grievances', GrievanceRoutes);
 
 
 const port = process.env.PORT || 3000 ;

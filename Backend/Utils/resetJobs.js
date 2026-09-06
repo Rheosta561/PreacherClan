@@ -14,7 +14,7 @@ function setupResetJobs() {
   // Monthly reset: 00:00 on 1st day of every month
   console.log('Setting up reset jobs...');
   cron.schedule('0 0 1 * *', async () => {
-    console.log('Running monthly streak reset job...')
+    console.log('Running monthly streak reset job...');
     try {
       const users = await User.find();
       const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -48,38 +48,24 @@ function setupResetJobs() {
   });
 
   // Weekly reset: 00:00 every Monday
- // Weekly reset: 00:00 every Monday
-cron.schedule('0 0 * * 1', async () => {
-  console.log('Running weekly preacher score update and workout hits reset job...');
-  try {
-    const users = await User.find();
+  cron.schedule('0 0 * * 1', async () => {
+    console.log('Running weekly workout hits reset job...');
+    try {
+      const result = await User.updateMany({}, { workoutHitsPerWeek: 0 });
 
-    for (const user of users) {
-      const weeklyHits = user.workoutHitsPerWeek || 0;
-      const scoreGain = weeklyHits * 10;
-      user.preacherScore = (user.preacherScore || 0) + scoreGain;
-      user.workoutHitsPerWeek = 0;
-      await user.save();
-      sendEmail(user.email, 
-        'Weekly Preacher Score Update', 
-        `<p>Dear ${user.name},</p>
-         <p>Your weekly preacher score has been updated. You gained ${scoreGain} points this week.</p>
-         <p>Your total preacher score is now ${user.preacherScore}.</p>
-         <p>Keep up the great work!</p>
+      console.log(`Weekly workout hits reset for ${result.modifiedCount} users.`);
+      sendEmail(process.env.EMAIL, 
+        'Weekly Workout Hits Reset', 
+        `<p>Dear Team,</p>
+         <p>The weekly workout hits have been reset for all users.</p>
+         <p>Keep encouraging our community to stay active!</p>
          <p>Best regards,</p>
          <p>Team Preacher Clan</p>`
       );
+    } catch (error) {
+      console.error('Error during weekly reset:', error);
     }
-
-    console.log(` Preacher scores updated and workout hits reset for ${users.length} users.`);
-
-    
-
-  } catch (error) {
-    console.error('Error during weekly preacher score update:', error);
-  }
-});
-
+  });
 
   console.log('Reset jobs scheduled.');
 }

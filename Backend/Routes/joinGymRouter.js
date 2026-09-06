@@ -5,6 +5,6 @@ const User = require('../Models/User');
 const userJoinController = require('../Controllers/userJoinController');
 const { check, validationResult } = require('express-validator');
 // Join a gym
-router.get('/:gymCode/:userId', userJoinController.joinController);
+router.post('/:userId', userJoinController.joinController);
 
 module.exports = router;
