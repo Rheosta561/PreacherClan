@@ -20,7 +20,10 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false },
 
   // Fitness Data
-  streak: { type: Number, default: 0 },
+  streak: {
+    count: { type: Number, default: 0 },
+    todayUpdated: { type: Boolean, default: false },
+  },
   lastWorkout: { type: mongoose.Schema.Types.ObjectId },
   todaysWorkout: { type: mongoose.Schema.Types.ObjectId },
   workoutHitsPerWeek: { type: Number, default: 0 },

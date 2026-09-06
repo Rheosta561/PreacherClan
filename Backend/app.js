@@ -78,6 +78,24 @@ app.use('/search', SearchRoutes);
 app.use('/review', ReviewRoutes);
 app.use('/grievances', GrievanceRoutes);
 
+app.use((error, req, res, next) => {
+    if (res.headersSent) {
+        return next(error);
+    }
+
+    const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+    const response = {
+        error: error.message || 'Internal server error',
+        message: error.message || 'Internal server error',
+    };
+
+    if (error.details) {
+        response.details = error.details;
+    }
+
+    return res.status(statusCode).json(response);
+});
+
 
 const port = process.env.PORT || 3000 ;
 server.listen(port, ()=> {

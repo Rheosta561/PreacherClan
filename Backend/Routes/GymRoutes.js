@@ -74,7 +74,13 @@ router.post('/entry/access', authMiddleware, async (req, res) => {
                 occurredAt: new Date(),
                 createdBy: { actorType: 'user', actorId: user._id },
             });
-            user.streak = (user.streak || 0) + 1;
+            const currentStreak = typeof user.streak === 'number'
+                ? user.streak
+                : Number(user.streak?.count) || 0;
+            user.streak = {
+                count: currentStreak + 1,
+                todayUpdated: true,
+            };
             await user.save();
         }
 
@@ -82,7 +88,7 @@ router.post('/entry/access', authMiddleware, async (req, res) => {
             message: alreadyCheckedIn ? 'Gym entry already recorded today' : 'Gym entry recorded successfully',
             gym: gym.name,
             gymId: gym._id,
-            currStreak: user.streak,
+            currStreak: typeof user.streak === 'number' ? user.streak : user.streak?.count || 0,
             streakUpdated: !alreadyCheckedIn,
             workoutHitsPerWeek: user.workoutHitsPerWeek || 0,
         });
