@@ -9,6 +9,7 @@ router.get('/login' , (req,res)=>{
 });
 router.get("/google", authController.googleAuth);
 router.get("/google/callback", authController.googleAuthCallback);
+router.post('/google-auth', authController.googleCredentialAuth);
 router.post('/login', loginController.login );
 router.post('/signup', loginController.signUp);
 

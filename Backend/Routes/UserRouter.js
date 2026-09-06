@@ -4,7 +4,9 @@ const User = require('../Models/User');
 
 router.get('/:userId' , async(req,res)=>{
     try {
-        const user = await User.findById(req.params.userId).select('-password -__v');
+        const user = await User.findById(req.params.userId)
+            .select('-password -__v')
+            .populate('gym', '_id name');
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
