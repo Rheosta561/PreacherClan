@@ -7,4 +7,7 @@ const { check, validationResult } = require('express-validator');
 // Join a gym
 router.post('/:userId', userJoinController.joinController);
 
+// Leave a gym
+router.post('/:userId/leave', userJoinController.leaveController);
+
 module.exports = router;
