@@ -42,35 +42,50 @@ const getGymOrThrow = async (gymId) => {
   return gym;
 };
 
-const recalculateGymReviewStats = async (gymId) => {
+const atomicUpdateGymRating = async (gymId, ratingDelta, countDelta, addReviewId = null, removeReviewId = null) => {
   const objectId = new mongoose.Types.ObjectId(gymId.toString());
 
-  const [stats, reviewRefs] = await Promise.all([
-    Review.aggregate([
-      { $match: { gymId: objectId } },
-      {
-        $group: {
-          _id: "$gymId",
-          averageRating: { $avg: "$rating" },
-          totalReviews: { $sum: 1 },
-        },
-      },
-    ]),
-    Review.find({ gymId }).select("_id").lean(),
-  ]);
+  const pipeline = [
+    {
+      $set: {
+        totalRatingSum: { $add: [{ $ifNull: ["$totalRatingSum", 0] }, ratingDelta] },
+        reviewCount: { $add: [{ $ifNull: ["$reviewCount", 0] }, countDelta] }
+      }
+    },
+    {
+      $set: {
+        rating: {
+          $cond: {
+            if: { $lte: ["$reviewCount", 0] },
+            then: 0,
+            else: { $round: [{ $divide: ["$totalRatingSum", "$reviewCount"] }, 1] }
+          }
+        }
+      }
+    }
+  ];
 
-  const averageRating = stats[0]?.averageRating ? Number(stats[0].averageRating.toFixed(2)) : 0;
-  const totalReviews = stats[0]?.totalReviews || 0;
+  if (addReviewId) {
+    pipeline[0].$set.reviews = {
+      $concatArrays: [{ $ifNull: ["$reviews", []] }, [new mongoose.Types.ObjectId(addReviewId.toString())]]
+    };
+  }
 
-  await Gym.findByIdAndUpdate(gymId, {
-    rating: averageRating,
-    reviewCount: totalReviews,
-    reviews: reviewRefs.map((item) => item._id),
-  });
+  if (removeReviewId) {
+    pipeline[0].$set.reviews = {
+      $filter: {
+        input: { $ifNull: ["$reviews", []] },
+        as: "r",
+        cond: { $ne: ["$$r", new mongoose.Types.ObjectId(removeReviewId.toString())] }
+      }
+    };
+  }
+
+  const updatedGym = await Gym.findByIdAndUpdate(objectId, pipeline, { new: true });
 
   return {
-    averageRating,
-    totalReviews,
+    averageRating: updatedGym.rating,
+    totalReviews: updatedGym.reviewCount,
   };
 };
 
@@ -106,7 +121,7 @@ const createReview = async (userId, payload) => {
     images: payload.images || [],
   });
 
-  const summary = await recalculateGymReviewStats(gym._id);
+  const summary = await atomicUpdateGymRating(gym._id, payload.rating, 1, review._id, null);
   const populatedReview = await Review.findById(review._id)
     .populate("userId", "name username image")
     .populate("gymId", "_id");
@@ -131,9 +146,6 @@ const listReviewsForGym = async (gymId, query, includeSummary = true) => {
       .skip(skip)
       .limit(limit),
     Review.countDocuments({ gymId }),
-    includeSummary ? recalculateGymReviewStats(gymId) : Promise.resolve(null),
-  ]);
-
   const response = {
     items: items.map(formatReviewDto),
     page,
@@ -143,7 +155,11 @@ const listReviewsForGym = async (gymId, query, includeSummary = true) => {
   };
 
   if (includeSummary) {
-    response.summary = summary;
+    const gym = await Gym.findById(gymId).select("rating reviewCount").lean();
+    response.summary = {
+      averageRating: gym?.rating || 0,
+      totalReviews: gym?.reviewCount || 0,
+    };
   }
 
   return response;
@@ -173,6 +189,8 @@ const updateOwnReview = async (userId, reviewId, payload) => {
     throw new AppError("You can only update your own review", 403);
   }
 
+  const oldRating = review.rating;
+  
   if (typeof payload.rating !== "undefined") {
     review.rating = payload.rating;
   }
@@ -186,7 +204,7 @@ const updateOwnReview = async (userId, reviewId, payload) => {
   }
 
   await review.save();
-  const summary = await recalculateGymReviewStats(review.gymId);
+  const summary = await atomicUpdateGymRating(review.gymId, review.rating - oldRating, 0);
 
   const populatedReview = await Review.findById(review._id)
     .populate("userId", "name username image")
@@ -209,8 +227,9 @@ const deleteOwnReview = async (userId, reviewId) => {
   }
 
   const gymId = review.gymId;
+  const oldRating = review.rating;
   await Review.deleteOne({ _id: review._id });
-  const summary = await recalculateGymReviewStats(gymId);
+  const summary = await atomicUpdateGymRating(gymId, -oldRating, -1, null, review._id);
 
   return { summary };
 };
@@ -250,8 +269,13 @@ const listGymDashboardReviews = async (gymId, query) => {
       .skip(skip)
       .limit(limit),
     Review.countDocuments(filter),
-    recalculateGymReviewStats(gymId),
   ]);
+
+  const gym = await Gym.findById(gymId).select("rating reviewCount").lean();
+  const summary = {
+    averageRating: gym?.rating || 0,
+    totalReviews: gym?.reviewCount || 0,
+  };
 
   return {
     items: items.map(formatReviewDto),
@@ -273,8 +297,9 @@ const deleteGymReview = async (gymId, reviewId) => {
     throw new AppError("This review does not belong to your gym", 403);
   }
 
+  const oldRating = review.rating;
   await Review.deleteOne({ _id: review._id });
-  const summary = await recalculateGymReviewStats(gymId);
+  const summary = await atomicUpdateGymRating(gymId, -oldRating, -1, null, review._id);
 
   return { summary };
 };
@@ -286,6 +311,6 @@ module.exports = {
   getReviewDetails,
   listGymDashboardReviews,
   listReviewsForGym,
-  recalculateGymReviewStats,
+  atomicUpdateGymRating,
   updateOwnReview,
 };

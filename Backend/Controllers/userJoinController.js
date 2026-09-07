@@ -144,7 +144,6 @@ const joinController = async(req,res)=>{
         
     }
 }
-}
 
 const leaveController = async (req, res) => {
     try {
