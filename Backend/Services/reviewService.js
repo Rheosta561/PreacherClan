@@ -146,6 +146,8 @@ const listReviewsForGym = async (gymId, query, includeSummary = true) => {
       .skip(skip)
       .limit(limit),
     Review.countDocuments({ gymId }),
+  ]);
+
   const response = {
     items: items.map(formatReviewDto),
     page,
