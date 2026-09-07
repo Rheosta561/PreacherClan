@@ -78,7 +78,8 @@ exports.login = async (req, res) => {
         </body>
         </html>`;
 
-        await sendEmail(user.email, "Login Alert", htmlContent);
+        // Send email asynchronously in the background
+        sendEmail(user.email, "Login Alert", htmlContent);
 
         return res.status(200).json({ user, message: "Access Granted" });
 
@@ -213,7 +214,8 @@ exports.signUp= async(req,res)=>{
 
         `;
 
-        await sendEmail(email, "Welcome to PreacherClan!", htmlContent);
+        // Send email asynchronously in the background
+        sendEmail(email, "Welcome to PreacherClan!", htmlContent);
 
         res.status(200).json({user:newUser, message:"Registered Successfully"});
         
