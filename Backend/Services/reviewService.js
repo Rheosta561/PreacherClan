@@ -263,7 +263,7 @@ const listGymDashboardReviews = async (gymId, query) => {
     ];
   }
 
-  const [items, totalItems, summary] = await Promise.all([
+  const [items, totalItems] = await Promise.all([
     Review.find(filter)
       .populate("userId", "name username image")
       .populate("gymId", "_id")
