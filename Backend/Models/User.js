@@ -13,6 +13,13 @@ const userSchema = new mongoose.Schema({
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   gym: { type: mongoose.Schema.Types.ObjectId, ref: "Gym" },
+  gymMembership: {
+    gym: { type: mongoose.Schema.Types.ObjectId, ref: "Gym" },
+    plan: { type: String, enum: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "None"], default: "None" },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    status: { type: String, enum: ["Active", "Expired", "Cancelled", "None"], default: "None" }
+  },
 
   // Roles
   isAdmin: { type: Boolean, default: false },

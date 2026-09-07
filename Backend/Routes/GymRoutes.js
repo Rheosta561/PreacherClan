@@ -7,9 +7,9 @@ const authMiddleware = require('../Middleware/auth');
 const { upload } = require('../config/cloudinary');
 
 const gymPopulation = [
-    { path: 'members', select: '-password -__v' },
-    { path: 'trainers', select: '-password -__v' },
-    { path: 'owner', select: '-password -__v' },
+    { path: 'members', select: '-password -__v', populate: { path: 'profile' } },
+    { path: 'trainers', select: '-password -__v', populate: { path: 'profile' } },
+    { path: 'owner', select: '-password -__v', populate: { path: 'profile' } },
 ];
 
 router.get('/featured', async (req, res) => {
@@ -38,7 +38,7 @@ router.get('/:gymId([0-9a-fA-F]{24})', async (req, res) => {
 
 router.post('/entry/access', authMiddleware, async (req, res) => {
     try {
-        const { gymId, gymCode } = req.body;
+        const { gymId, gymCode, latitude, longitude } = req.body;
         const gym = gymId
             ? await Gym.findById(gymId)
             : await Gym.findOne({ gymCode });
@@ -51,6 +51,25 @@ router.post('/entry/access', authMiddleware, async (req, res) => {
         const isMember = gym.members.some((member) => member.toString() === String(user._id));
         if (!isMember || String(user.gym) !== String(gym._id)) {
             return res.status(403).json({ message: 'User is not an active member of this gym' });
+        }
+
+        if (latitude && longitude && gym.address?.latitude && gym.address?.longitude) {
+            const R = 6371e3; // Earth radius in meters
+            const lat1 = gym.address.latitude * Math.PI / 180;
+            const lat2 = latitude * Math.PI / 180;
+            const deltaLat = (latitude - gym.address.latitude) * Math.PI / 180;
+            const deltaLon = (longitude - gym.address.longitude) * Math.PI / 180;
+
+            const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+                      Math.cos(lat1) * Math.cos(lat2) *
+                      Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+
+            const maxDistance = parseFloat(process.env.PROXIMITY_RADIUS_METERS) || 200;
+            if (distance > maxDistance) {
+                return res.status(403).json({ message: 'You are too far from the gym to check in' });
+            }
         }
 
         const startOfDay = new Date();
@@ -169,6 +188,44 @@ router.get('/all', async (req, res) => {
     try {
         const gyms = await Gym.find().populate('members', '-password -__v');
         res.status(200).json(gyms);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.get('/:gymId/today-stats', async (req, res) => {
+    try {
+        const { gymId } = req.params;
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const uniqueCheckIns = await EntryLog.distinct('memberUserId', {
+            gymId,
+            actionType: 'check_in',
+            occurredAt: { $gte: startOfDay }
+        });
+
+        res.status(200).json({ count: uniqueCheckIns.length });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post('/:gymId/assign-membership', authMiddleware, async (req, res) => {
+    try {
+        const { gymId } = req.params;
+        const { plan, startDate, endDate, status, userId } = req.body;
+        const user = await User.findById(userId || req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        user.gymMembership = { gym: gymId, plan, startDate, endDate, status };
+        await user.save();
+        
+        res.status(200).json({ message: 'Membership assigned', membership: user.gymMembership });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: error.message });
