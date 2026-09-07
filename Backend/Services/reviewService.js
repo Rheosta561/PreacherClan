@@ -43,7 +43,7 @@ const getGymOrThrow = async (gymId) => {
 };
 
 const recalculateGymReviewStats = async (gymId) => {
-  const objectId = typeof gymId === 'string' ? new mongoose.Types.ObjectId(gymId) : gymId;
+  const objectId = new mongoose.Types.ObjectId(gymId.toString());
 
   const [stats, reviewRefs] = await Promise.all([
     Review.aggregate([
