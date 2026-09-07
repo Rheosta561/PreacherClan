@@ -1,6 +1,7 @@
 const Review = require("../Models/Review");
 const Gym = require("../Models/GymSchema");
 const User = require("../Models/User");
+const mongoose = require("mongoose");
 const { AppError } = require("./gymAuthService");
 
 const parsePagination = ({ page = 1, limit = 10 }) => {
@@ -42,9 +43,11 @@ const getGymOrThrow = async (gymId) => {
 };
 
 const recalculateGymReviewStats = async (gymId) => {
+  const objectId = typeof gymId === 'string' ? new mongoose.Types.ObjectId(gymId) : gymId;
+
   const [stats, reviewRefs] = await Promise.all([
     Review.aggregate([
-      { $match: { gymId } },
+      { $match: { gymId: objectId } },
       {
         $group: {
           _id: "$gymId",
