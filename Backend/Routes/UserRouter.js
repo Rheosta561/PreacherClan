@@ -34,4 +34,14 @@ router.patch('/:userId/age', async (req, res) => {
     }
 });
 
+router.patch('/:userId/onboard', async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(req.params.userId, { onboardingCompleted: true }, { new: true });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json({ message: 'Onboarding marked completed', user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

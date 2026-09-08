@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   isTrainer: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
+  onboardingCompleted: { type: Boolean, default: false },
 
   // Fitness Data
   streak: {
