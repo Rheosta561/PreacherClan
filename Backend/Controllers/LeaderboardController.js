@@ -8,7 +8,7 @@ const getGlobalLeaderboard = async (req, res) => {
 
     const topUsers = await user
       .find({})
-      .sort({ preacherScore: -1 })
+      .sort({ preacherScore: -1, _id: 1 })
       .skip(skip)
       .limit(limit)
       .populate("profile", "profileImage fitnessGoals")
@@ -50,8 +50,18 @@ const getUserRank = async (req, res) => {
     }
 
     const score = currentUser.preacherScore || 0;
-    // Calculate global rank: number of users with a strictly greater score, plus 1
-    const rank = await user.countDocuments({ preacherScore: { $gt: score } }) + 1;
+    
+    // Calculate global rank:
+    // 1. Users with a strictly greater score
+    const higherScoreCount = await user.countDocuments({ preacherScore: { $gt: score } });
+    
+    // 2. Tie-breaker: users with the exact same score but joined earlier (smaller _id)
+    const tieBreakerCount = await user.countDocuments({ 
+      preacherScore: score, 
+      _id: { $lt: currentUser._id } 
+    });
+
+    const rank = higherScoreCount + tieBreakerCount + 1;
 
     return res.status(200).json({
       userId,
