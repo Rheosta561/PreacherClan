@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
   lastWorkout: { type: mongoose.Schema.Types.ObjectId },
   todaysWorkout: { type: mongoose.Schema.Types.ObjectId },
   workoutHitsPerWeek: { type: Number, default: 0 },
-  preacherScore: { type: Number, default: 0 },
+  preacherScore: { type: Number, default: 0, index: -1 },
 
   // Monthly Reset Fields
   lastMonthlyReset: { type: Date },

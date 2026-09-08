@@ -23,8 +23,6 @@ Return JSON ONLY in this exact format:
   "rules": ["string","string","string"]
 }
 
-module.exports = { generateVikingChallenge };
-
 Rules:
 - Title must sound Viking/Norse themed
 - Description must be motivating, intense, warrior-like
@@ -38,6 +36,7 @@ Rules:
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
-
   return JSON.parse(text);
 }
+
+module.exports = { generateVikingChallenge };
