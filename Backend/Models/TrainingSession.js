@@ -17,8 +17,7 @@ const TrainingSessionSchema = new mongoose.Schema(
       index: true,
     },
     splitId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "WorkoutSplit",
+      type: String,
       required: true,
     },
     day: {
