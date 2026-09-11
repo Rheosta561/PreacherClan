@@ -16,7 +16,7 @@ const ProfileSchema = new mongoose.Schema({
     exerciseGenre: [{ type: String, enum: ["Cardio", "Weight Training"] }],
     milestones: [{ type: mongoose.Schema.Types.ObjectId, ref: "Milestone" }],
     preacherRank: { type: Number, default: 0 },
-
+    embedding: { type: [Number] }, // 768-dimensional Gemini embedding
 });
 
 const Profile = mongoose.model("Profile", ProfileSchema);

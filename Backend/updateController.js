@@ -1,53 +1,21 @@
-const user = require("../Models/User");
-const Profile = require("../Models/Profile");
-const { rerankCandidates } = require("../Utils/recommendationEngine");
-const request = require("../Models/Requests");
-const mongoose = require("mongoose");
-const toValidObjectIds = (ids) =>
-  Array.from(ids)
-    .filter((id) => mongoose.Types.ObjectId.isValid(id))
-    .map((id) => new mongoose.Types.ObjectId(id));
+const fs = require("fs");
+const path = "./Controllers/getProfilesController.js";
+let code = fs.readFileSync(path, "utf8");
 
-const getProfiles = async (req, res) => {
-  try {
-    const User = await user.find({}).populate("profile").populate("gym");
-    if (!User || User.length === 0) {
-      return res.status(404).json({ message: "No profiles found" });
-    }
+// 1. Add Profile import and recommendation engine
+if (!code.includes("const Profile = require")) {
+  code = code.replace(
+    'const user = require("../Models/User");',
+    `const user = require("../Models/User");\nconst Profile = require("../Models/Profile");\nconst { rerankCandidates } = require("../Utils/recommendationEngine");`
+  );
+}
 
-    const profiles = User.map((user) => ({
-      userId: user._id,
-      name: user.name,
-      profileImage: user.profile ? user.profile.profileImage : null,
-      coverImage: user.profile ? user.profile.coverImage : null,
-      about: user.profile ? user.profile.about : null,
-      socialHandles: user.profile ? user.profile.socialHandles : {},
-      fitnessGoals: user.profile ? user.profile.fitnessGoals : [],
-      timings: user.profile ? user.profile.timings : "",
-      ambition: user.profile ? user.profile.ambition : [],
-      exerciseGenre: user.profile ? user.profile.exerciseGenre : [],
-      preacherRank: user.profile ? user.profile.preacherRank : 0,
-      isVerified: user.isVerified,
-      isTrainer: user.isTrainer,
-      gym: user.gym || null,
-      followersCount: user.followers ? user.followers.length : 0,
-      friends: user.partner
-        ? user.partner.map((partner) => ({
-            id: partner._id,
-            name: partner.name,
-            image: partner.image,
-          }))
-        : [],
-    }));
-    return res.status(200).json({ profiles });
-  } catch (error) {
-    console.error("Error fetching profiles:", error);
-    return res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
-  }
-};
-const getProfileById = async (req, res) => {
+// 2. We need to intercept the GEO USERS and NON-GEO USERS logic in getProfileById.
+// Let's replace the entire getProfileById function using regex or string replacement.
+
+const getProfileByIdRegex = /const getProfileById = async \(req, res\) => \{[\s\S]*?\n\};\n\nconst getTopPreachersOfTown/m;
+
+const newGetProfileById = `const getProfileById = async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -247,88 +215,9 @@ const getProfileById = async (req, res) => {
   }
 };
 
-const getTopPreachersOfTown = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit) || 5, 10);
+const getTopPreachersOfTown`;
 
-    const currentUser = await user
-      .findById(userId)
-      .populate("profile")
-      .populate("gym");
+code = code.replace(getProfileByIdRegex, newGetProfileById);
 
-    if (!currentUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // exclusion logic
-    const excludeUserIds = new Set([userId.toString()]);
-
-    currentUser.partner?.forEach((p) => excludeUserIds.add(p.toString()));
-
-    const pendingRequests = await request
-      .find({
-        status: "pending",
-        $or: [{ sender: userId }, { receiver: userId }],
-      })
-      .select("sender receiver");
-
-    pendingRequests.forEach((r) => {
-      excludeUserIds.add(r.sender.toString());
-      excludeUserIds.add(r.receiver.toString());
-    });
-
-    const excludedObjectIds = Array.from(excludeUserIds).map(
-      (id) => new mongoose.Types.ObjectId(id),
-    );
-
-    //  locallity
-    let cityFilter = {};
-
-    if (currentUser.gym?.city) {
-      cityFilter = { "gym.city": currentUser.gym.city };
-    }
-
-    // toppreachers
-    const topPreachers = await user
-      .find({
-        _id: { $nin: excludedObjectIds },
-        preacherScore: { $gt: 0 },
-        ...cityFilter,
-      })
-      .sort({ preacherScore: -1 })
-      .limit(limit)
-      .populate("profile")
-      .populate("gym")
-      .lean();
-
-    const profiles = topPreachers.map((u) => ({
-      userId: u._id,
-      name: u.name,
-      profileImage: u.profile?.profileImage || null,
-      preacherScore: u.preacherScore || 0,
-      isVerified: u.isVerified,
-      isTrainer: u.isTrainer,
-      gym: u.gym || null,
-      timings: u.profile?.timings || "Flexible",
-      fitnessGoals: u.profile?.fitnessGoals || [],
-    }));
-
-    return res.status(200).json({
-      count: profiles.length,
-      profiles,
-    });
-  } catch (error) {
-    console.error("getTopPreachersOfTown error:", error);
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
-};
-
-module.exports = {
-  getProfiles,
-  getProfileById,
-  getTopPreachersOfTown,
-};
+fs.writeFileSync(path, code);
+console.log("Successfully updated getProfilesController.js!");
