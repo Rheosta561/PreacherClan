@@ -142,8 +142,13 @@ test("Streamable HTTP exposes authenticated tools and returns only the principal
   t.after(() => mcp.close());
 
   const { tools } = await mcp.client.listTools();
+  const updateTool = tools.find(({ name }) => name === "update_workout_split");
   assert.match(mcp.client.getInstructions(), /authenticated user's own fitness profile/i);
   assert.match(mcp.client.getInstructions(), /replaces the entire exercise list/i);
+  assert.match(
+    mcp.client.getInstructions(),
+    /ask whether they want YouTube tutorials included before calling update_workout_split/i
+  );
   assert.match(
     tools.find(({ name }) => name === "get_user_context").description,
     /profile or recent training history/
@@ -153,12 +158,29 @@ test("Streamable HTTP exposes authenticated tools and returns only the principal
     /read this before an update/i
   );
   assert.match(
-    tools.find(({ name }) => name === "update_workout_split").description,
+    updateTool.description,
     /Saturday\/Sa/
   );
   assert.match(
-    tools.find(({ name }) => name === "update_workout_split").description,
+    updateTool.description,
     /replaces that entire day's exercise list/
+  );
+  assert.deepEqual(
+    Object.keys(updateTool.inputSchema.properties).sort(),
+    ["day_overrides", "description", "split_name"]
+  );
+  assert.ok(
+    updateTool.inputSchema.properties.day_overrides.items.properties.day.enum.includes(
+      "Saturday"
+    )
+  );
+  assert.match(
+    updateTool.inputSchema.properties.day_overrides.items.properties.exercises.items.properties.youtube.description,
+    /complete YouTube video URL/
+  );
+  assert.match(
+    updateTool.description,
+    /ask whether to include YouTube tutorials before calling this tool/i
   );
   assert.deepEqual(
     tools.map(({ name }) => name).sort(),
@@ -247,15 +269,37 @@ test("update_workout_split validates changes and records the client context", as
           day: "Saturday",
           exercises: [
             {
-              name: "Bench Press",
+              name: "Weighted Pull-Ups",
+              sets: 4,
+              reps: 6,
+            },
+            {
+              name: "Barbell Rows",
               sets: 4,
               reps: 8,
+            },
+            {
+              name: "Chest-Supported DB Rows",
+              sets: 3,
+              reps: 10,
+            },
+            {
+              name: "Face Pulls",
+              sets: 3,
+              reps: 15,
+              youtube: "https://www.youtube.com/watch?v=example",
+            },
+            {
+              name: "EZ-Bar Curls",
+              sets: 4,
+              reps: 10,
+            },
+            {
+              name: "Hammer Curls",
+              sets: 3,
+              reps: 12,
               difficulty: null,
               target_muscles: null,
-              equipment: null,
-              description: null,
-              instructions: null,
-              youtube: "https://youtu.be/example",
             },
           ],
         },
@@ -265,10 +309,15 @@ test("update_workout_split validates changes and records the client context", as
   const update = JSON.parse(updateResult.content[0].text);
   assert.equal(update.success, true);
   assert.deepEqual(update.updated_days, ["Sa"]);
+  assert.equal(receivedChanges.day_overrides[0].exercises.length, 6);
   assert.equal(receivedChanges.day_overrides[0].exercises[0].sets, 4);
+  assert.equal(
+    receivedChanges.day_overrides[0].exercises[3].youtube,
+    "https://www.youtube.com/watch?v=example"
+  );
   assert.equal(receivedChanges.day_overrides[0].day, "Sa");
-  assert.equal(receivedChanges.day_overrides[0].exercises[0].difficulty, undefined);
-  assert.equal(receivedChanges.day_overrides[0].exercises[0].target_muscles, undefined);
+  assert.equal(receivedChanges.day_overrides[0].exercises[5].difficulty, null);
+  assert.equal(receivedChanges.day_overrides[0].exercises[5].target_muscles, null);
   assert.deepEqual(receivedAuditContext, {
     clientId: CLIENT_ID,
     scopes: ["mcp:write:split"],
@@ -294,6 +343,27 @@ test("update_workout_split validates changes and records the client context", as
     },
   });
   assert.equal(invalidResult.isError, true);
+  assert.deepEqual(receivedChanges, acceptedChanges);
+
+  const invalidVideoUrlResult = await mcp.client.callTool({
+    name: "update_workout_split",
+    arguments: {
+      day_overrides: [
+        {
+          day: "Saturday",
+          exercises: [
+            {
+              name: "Face Pulls",
+              sets: 3,
+              reps: 15,
+              youtube: "https://example.com/face-pulls",
+            },
+          ],
+        },
+      ],
+    },
+  });
+  assert.equal(invalidVideoUrlResult.isError, true);
   assert.deepEqual(receivedChanges, acceptedChanges);
 });
 

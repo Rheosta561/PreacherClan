@@ -160,6 +160,8 @@ Access tokens expire after 10 minutes by default, and refresh tokens rotate. Reu
 
 For `update_workout_split`, each `day_overrides` entry replaces that whole day's exercise list. Use either weekday names or codes (`Saturday` or `Sa`); exercises require `name`, integer `sets` (1-20), and integer `reps` (1-100). Optional exercise fields can be omitted or passed as `null`. Use `"exercises": []` to clear a day.
 
+When a user asks to add exercises without specifying whether they want video tutorials, the assistant should ask before updating the split. If requested, include only verified YouTube URLs in the `youtube` field; never guess or fabricate links.
+
 Each tool enforces its required scope. Split writes use the existing ownership-checked service and write before/after audit records with OAuth client and scopes. MCP requests/tools also record user, client, scopes, operation, outcome and duration without storing prompts or tool payloads. Read and write tools use separate per-user/per-client limits of 120 and 20 calls per minute by default; override with `MCP_READ_RATE_LIMIT_PER_MINUTE` and `MCP_WRITE_RATE_LIMIT_PER_MINUTE`.
 
 #### OpenCode
