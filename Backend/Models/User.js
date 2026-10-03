@@ -1,6 +1,32 @@
 const e = require('express');
 const mongoose = require('mongoose');
 
+const GymMembershipSchema = new mongoose.Schema(
+  {
+    gymId: { type: mongoose.Schema.Types.ObjectId, ref: "Gym" },
+    gymName: String,
+    membershipType: {
+      type: String,
+      enum: ["Monthly", "Quarterly", "HalfYearly", "Yearly"],
+    },
+    membershipStatus: {
+      type: String,
+      enum: ["Active", "Paused", "Expired", "Revoked"],
+    },
+    membershipStartsAt: Date,
+    membershipEndsAt: Date,
+    joinedAt: Date,
+    revokedAt: Date,
+    revokedReason: String,
+    gym: { type: mongoose.Schema.Types.ObjectId, ref: "Gym" },
+    plan: { type: String, enum: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "None"] },
+    startDate: Date,
+    endDate: Date,
+    status: { type: String, enum: ["Active", "Expired", "Cancelled", "None"] },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   username: { type: String, unique: true },
@@ -13,14 +39,9 @@ const userSchema = new mongoose.Schema({
   workoutPlan: { type: mongoose.Schema.Types.ObjectId, ref: "WorkoutPlan" },
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  gym: { type: mongoose.Schema.Types.ObjectId, ref: "Gym" },
-  gymMembership: {
-    gym: { type: mongoose.Schema.Types.ObjectId, ref: "Gym" },
-    plan: { type: String, enum: ["Monthly", "Quarterly", "Half-Yearly", "Yearly", "None"], default: "None" },
-    startDate: { type: Date },
-    endDate: { type: Date },
-    status: { type: String, enum: ["Active", "Expired", "Cancelled", "None"], default: "None" }
-  },
+  gym: { type: mongoose.Schema.Types.Mixed },
+  gymMembership: { type: GymMembershipSchema, default: undefined },
+  gymMembershipHistory: { type: [GymMembershipSchema], default: [] },
 
   // Roles
   isAdmin: { type: Boolean, default: false },

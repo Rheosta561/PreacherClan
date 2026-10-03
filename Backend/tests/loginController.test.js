@@ -41,9 +41,10 @@ function createResponse() {
   };
 }
 
-test('successful username/password login returns usable scoped tokens without the password hash', async (t) => {
+test('email login greets the user by name and returns usable scoped tokens without the password hash', async (t) => {
   const user = {
     _id: { toString: () => '507f1f77bcf86cd799439011' },
+    name: 'Test User',
     username: 'test-user',
     email: 'test@example.com',
     password: 'hashed-password',
@@ -56,14 +57,17 @@ test('successful username/password login returns usable scoped tokens without th
       };
     },
   };
+  let sentEmail;
   t.mock.method(User, 'findOne', async () => user);
   t.mock.method(bcrypt, 'compare', async () => true);
-  t.mock.method(emailService, 'sendEmail', async () => undefined);
+  t.mock.method(emailService, 'sendEmail', async (message) => {
+    sentEmail = message;
+  });
 
   const response = createResponse();
   await loginController.login(
     {
-      body: { username: 'test-user', password: 'correct-password' },
+      body: { email: 'test@example.com', password: 'correct-password' },
       headers: {},
       socket: { remoteAddress: '127.0.0.1' },
       useragent: { platform: 'test', browser: 'test' },
@@ -73,6 +77,8 @@ test('successful username/password login returns usable scoped tokens without th
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.message, 'Access Granted');
+  assert.match(sentEmail.html, /Hi Test User,/);
+  assert.doesNotMatch(sentEmail.html, /Hi undefined,/);
   assert.equal('password' in response.body.user, false);
 
   const claims = jwt.verify(
@@ -89,6 +95,42 @@ test('successful username/password login returns usable scoped tokens without th
     process.env.REFRESH_TOKEN_SECRET
   );
   assert.equal(refreshClaims.type, 'refresh');
+});
+
+test('signup welcome email greets the user by their display name', async (t) => {
+  const user = {
+    _id: { toString: () => '507f1f77bcf86cd799439012' },
+    name: 'New Member',
+    username: 'new-member',
+    email: 'new@example.com',
+    toObject() {
+      return { ...this };
+    },
+  };
+  let sentEmail;
+  t.mock.method(User, 'findOne', async () => null);
+  t.mock.method(User, 'create', async () => user);
+  t.mock.method(bcrypt, 'hash', async () => 'hashed-password');
+  t.mock.method(emailService, 'sendEmail', async (message) => {
+    sentEmail = message;
+  });
+
+  const response = createResponse();
+  await loginController.signUp(
+    {
+      body: {
+        name: 'New Member',
+        email: 'new@example.com',
+        username: 'new-member',
+        password: 'correct-password',
+      },
+    },
+    response
+  );
+
+  assert.equal(response.statusCode, 201);
+  assert.match(sentEmail.html, /Hi New Member,/);
+  assert.doesNotMatch(sentEmail.html, /Hi undefined,/);
 });
 
 test('invalid password does not return access or refresh tokens', async (t) => {

@@ -4,6 +4,20 @@ const { generateSplitId } = require("../Utils/generateSplitId");
 
 const JWT_SECRET = process.env.SPLIT_SHARE_SECRET || "split_secret";
 
+const getFrontendBaseUrl = () => {
+  const configuredUrl =
+    process.env.FRONTEND_URL ||
+    process.env.CLIENT_ORIGIN?.split(",")[0].trim() ||
+    "https://preacherclan.in";
+  const url = new URL(configuredUrl);
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("FRONTEND_URL must use HTTP or HTTPS");
+  }
+
+  return url.toString().replace(/\/+$/, "");
+};
+
 const PRESET_SPLITS = [
   {
     split_id: "odin_strength_5day",
@@ -162,12 +176,14 @@ exports.generateShareToken = async (req, res) => {
 
     res.json({
       shareToken: token,
-      shareUrl: `${process.env.FRONTEND_URL}/share/${token}`,
+      shareUrl: `${getFrontendBaseUrl()}/share/${token}`,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to generate share token" });
   }
 };
+
+exports.getFrontendBaseUrl = getFrontendBaseUrl;
 
 exports.getSharedSplit = async (req, res) => {
   try {

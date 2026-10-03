@@ -144,6 +144,10 @@ test("Streamable HTTP exposes authenticated tools and returns only the principal
   const { tools } = await mcp.client.listTools();
   const updateTool = tools.find(({ name }) => name === "update_workout_split");
   assert.match(mcp.client.getInstructions(), /authenticated user's own fitness profile/i);
+  assert.match(
+    mcp.client.getInstructions(),
+    /Check gymMembershipHistory before saying the user has never had a membership/i
+  );
   assert.match(mcp.client.getInstructions(), /replaces the entire exercise list/i);
   assert.match(
     mcp.client.getInstructions(),
@@ -255,6 +259,7 @@ test("update_workout_split validates changes and records the client context", as
             ),
           },
           updatedDays: changes.day_overrides.map(({ day }) => day),
+          copiedFromSplitId: "shared-preset",
         };
       },
     },
@@ -308,6 +313,8 @@ test("update_workout_split validates changes and records the client context", as
   });
   const update = JSON.parse(updateResult.content[0].text);
   assert.equal(update.success, true);
+  assert.equal(update.copied_from_split_id, "shared-preset");
+  assert.match(update.message, /personal copy/);
   assert.deepEqual(update.updated_days, ["Sa"]);
   assert.equal(receivedChanges.day_overrides[0].exercises.length, 6);
   assert.equal(receivedChanges.day_overrides[0].exercises[0].sets, 4);

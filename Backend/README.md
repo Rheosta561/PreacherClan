@@ -148,7 +148,7 @@ MCP_READ_RATE_LIMIT_PER_MINUTE=120
 MCP_WRITE_RATE_LIMIT_PER_MINUTE=20
 ```
 
-Production must configure `MCP_ISSUER_URL`, `MCP_RESOURCE_URL`, and `MCP_CONSENT_URL` with the actual public HTTPS URLs and allow the deployed frontend origin through `CLIENT_ORIGIN` or `MCP_ALLOWED_ORIGINS`. Generate `MCP_ACCESS_TOKEN_SECRET` independently of the REST JWT keys. When TLS terminates at a reverse proxy, configure `TRUST_PROXY` to the exact trusted hop count or proxy subnet so Express can verify HTTPS; do not trust arbitrary proxies.
+Production must configure `FRONTEND_URL` as the deployed website origin (for example, `https://www.preacherclan.in`) so workout share links point to the frontend. The share URL falls back to the first `CLIENT_ORIGIN` and then `https://preacherclan.in` if this variable is unset. Also configure `MCP_ISSUER_URL`, `MCP_RESOURCE_URL`, and `MCP_CONSENT_URL` with the actual public HTTPS URLs and allow the deployed frontend origin through `CLIENT_ORIGIN` or `MCP_ALLOWED_ORIGINS`. Generate `MCP_ACCESS_TOKEN_SECRET` independently of the REST JWT keys. When TLS terminates at a reverse proxy, configure `TRUST_PROXY` to the exact trusted hop count or proxy subnet so Express can verify HTTPS; do not trust arbitrary proxies.
 
 Access tokens expire after 10 minutes by default, and refresh tokens rotate. Reuse of a rotated refresh token revokes its grant; revoking a refresh token invalidates all tokens in its grant. OAuth metadata is published at `/.well-known/oauth-authorization-server`; the protected-resource metadata for `/mcp` is at `/.well-known/oauth-protected-resource/mcp`. The OAuth endpoints are `/register`, `/authorize`, `/token`, and `/revoke`. Users see the requesting client's name, redirect host and permissions on the V2 consent page before approval.
 
@@ -161,6 +161,10 @@ Access tokens expire after 10 minutes by default, and refresh tokens rotate. Reu
 For `update_workout_split`, each `day_overrides` entry replaces that whole day's exercise list. Use either weekday names or codes (`Saturday` or `Sa`); exercises require `name`, integer `sets` (1-20), and integer `reps` (1-100). Optional exercise fields can be omitted or passed as `null`. Use `"exercises": []` to clear a day.
 
 When a user asks to add exercises without specifying whether they want video tutorials, the assistant should ask before updating the split. If requested, include only verified YouTube URLs in the `youtube` field; never guess or fabricate links.
+
+If the active split is a preset or belongs to another user, `update_workout_split` makes a personal copy, sets it as the caller's active split, and applies the requested edits only to that copy. The shared source remains unchanged. The response reports the new `split_id` and `copied_from_split_id`.
+
+`get_user_context` normalizes both current gym logic fields (`membershipType`, `membershipStatus`, `membershipStartsAt`, `membershipEndsAt`) and older assigned-membership fields (`plan`, `status`, `startDate`, `endDate`) into a consistent response containing both canonical `plan`/`status` and `membershipType`/`membershipStatus` names, gym identity/name, and dates. It also returns allowlisted `gymMembershipHistory` records. Check history before concluding that a user has never had a membership; unrelated model fields are not returned.
 
 Each tool enforces its required scope. Split writes use the existing ownership-checked service and write before/after audit records with OAuth client and scopes. MCP requests/tools also record user, client, scopes, operation, outcome and duration without storing prompts or tool payloads. Read and write tools use separate per-user/per-client limits of 120 and 20 calls per minute by default; override with `MCP_READ_RATE_LIMIT_PER_MINUTE` and `MCP_WRITE_RATE_LIMIT_PER_MINUTE`.
 

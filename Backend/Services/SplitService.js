@@ -1,6 +1,8 @@
 const UserService = require("./UserService");
 const WorkoutSplit = require("../Models/WorkoutSplit");
+const User = require("../Models/User");
 const AuditLog = require("../Models/AuditLog");
+const { generateSplitId } = require("../Utils/generateSplitId");
 
 const DAY_CODES = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
@@ -32,7 +34,9 @@ function toSnapshot(split) {
 function createSplitService({
   getUserForSplitAccess = UserService.getUserForSplitAccess,
   workoutSplitModel = WorkoutSplit,
+  userModel = User,
   auditLogModel = AuditLog,
+  createSplitId = generateSplitId,
 } = {}) {
   async function getCurrentWorkoutSplit(userId) {
     const user = await getUserForSplitAccess(userId);
@@ -54,14 +58,37 @@ function createSplitService({
       throw createServiceError("User has no active workout split", 404);
     }
 
-    const split = await workoutSplitModel.findOne({ split_id: user.currentSplitId });
+    let split = await workoutSplitModel.findOne({ split_id: user.currentSplitId });
     if (!split) {
       throw createServiceError("Current workout split not found", 404);
     }
 
     const ownsSplit = split.creatorId?.toString() === userId;
     if (!ownsSplit && !user.isAdmin) {
-      throw createServiceError("You are not authorized to update this workout split", 403);
+      const sourceSplitId = split.split_id;
+      const personalSplit = await workoutSplitModel.create({
+        split_id: createSplitId(),
+        split_name: split.split_name,
+        description: split.description,
+        exercises: split.exercises,
+        cover_image: split.cover_image,
+        creator: user.name || "Preacher Clan Member",
+        creatorId: userId,
+      });
+
+      const updatedUser = await userModel.findOneAndUpdate(
+        { _id: userId, currentSplitId: sourceSplitId },
+        { $set: { currentSplitId: personalSplit.split_id } },
+        { new: true }
+      );
+      if (!updatedUser) {
+        await workoutSplitModel.deleteOne({ _id: personalSplit._id });
+        throw createServiceError(
+          "Your active workout split changed during this update; retry the request",
+          409
+        );
+      }
+      split = personalSplit;
     }
 
     const before = toSnapshot(split);
@@ -118,6 +145,7 @@ function createSplitService({
     return {
       split: updatedSplit,
       updatedDays,
+      ...(ownsSplit ? {} : { copiedFromSplitId: user.currentSplitId }),
     };
   }
 

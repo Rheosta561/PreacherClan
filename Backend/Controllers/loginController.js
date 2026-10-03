@@ -11,6 +11,20 @@ const sendEmailInBackground = (message) => {
     });
 };
 
+const getEmailGreetingName = (user) => {
+    const name = [user?.name, user?.username, user?.email?.split("@")[0]]
+        .find((value) => typeof value === "string" && value.trim());
+    return (name || "there")
+        .trim()
+        .replace(/[&<>"']/g, (character) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+        })[character]);
+};
+
 exports.login = async (req, res) => {
     try {
         const { username, email, password } = req.body;
@@ -56,7 +70,7 @@ exports.login = async (req, res) => {
                     <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
                 </div>
                 <div class="content">
-                    <p><b>Hi ${username},</b></p>
+                    <p><b>Hi ${getEmailGreetingName(user)},</b></p>
                     <p>We noticed a new login to your <b>Preacher Clan</b> account.</p>
                     <p><b>Login Details:</b></p>
                     <p><b>Device:</b> ${device}</p>
@@ -222,7 +236,7 @@ exports.signUp = async (req, res) => {
                 <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
             </div>
             <div class="content">
-                <p><b>Hi ${normalizedUsername},</b></p>
+                <p><b>Hi ${getEmailGreetingName(newUser)},</b></p>
                 <p>Welcome to <b>Preacher Clan</b>! We are thrilled to have you join our growing community of fitness enthusiasts.</p>
                 <p>Preacher Clan is all about collecting ideas from workout lovers to revolutionize fitness in India. Our vision is to build a strong and supportive community where fitness is not just a routine but a movement.</p>
                 

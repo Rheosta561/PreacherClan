@@ -7,9 +7,10 @@ function makeService({
   isAdmin = false,
   currentSplitId = "my-split",
   updateResult,
+  createSplitId = () => "personal-split",
 } = {}) {
-  const calls = { update: null, audit: null };
-  const split = {
+  const calls = { update: null, audit: null, created: null, userUpdate: null };
+  let split = {
     _id: "split-document-id",
     __v: 4,
     split_id: "my-split",
@@ -25,10 +26,20 @@ function makeService({
   const service = createSplitService({
     getUserForSplitAccess: async () => ({
       currentSplitId,
+      name: "Test User",
       isAdmin,
     }),
     workoutSplitModel: {
       async findOne() {
+        return split;
+      },
+      async create(data) {
+        calls.created = data;
+        split = {
+          ...data,
+          _id: "personal-split-document-id",
+          __v: 0,
+        };
         return split;
       },
       async findOneAndUpdate(filter, update, options) {
@@ -40,12 +51,20 @@ function makeService({
           __v: split.__v + 1,
         };
       },
+      async deleteOne() {},
+    },
+    userModel: {
+      async findOneAndUpdate(filter, update) {
+        calls.userUpdate = { filter, update };
+        return { _id: filter._id };
+      },
     },
     auditLogModel: {
       async create(entry) {
         calls.audit = entry;
       },
     },
+    createSplitId,
   });
   return { service, calls };
 }
@@ -79,15 +98,25 @@ test("updates only the authenticated owner's current split and records the chang
   assert.equal(calls.audit.changes.after.exercises[0].name, "Keep this day");
 });
 
-test("rejects updates to a split the authenticated user does not own", async () => {
+test("copies a shared split before updating it for the authenticated user", async () => {
   const { service, calls } = makeService({ creatorId: "another-user" });
 
-  await assert.rejects(
-    service.updateCurrentWorkoutSplit("user-123", { split_name: "No access" }),
-    { statusCode: 403 }
-  );
-  assert.equal(calls.update, null);
-  assert.equal(calls.audit, null);
+  const result = await service.updateCurrentWorkoutSplit("user-123", {
+    split_name: "My Custom Split",
+  });
+
+  assert.equal(calls.created.split_id, "personal-split");
+  assert.equal(calls.created.creatorId, "user-123");
+  assert.equal(calls.created.creator, "Test User");
+  assert.equal(calls.created.split_name, "Old name");
+  assert.deepEqual(calls.userUpdate, {
+    filter: { _id: "user-123", currentSplitId: "my-split" },
+    update: { $set: { currentSplitId: "personal-split" } },
+  });
+  assert.equal(calls.update.filter._id, "personal-split-document-id");
+  assert.equal(result.split.split_id, "personal-split");
+  assert.equal(result.copiedFromSplitId, "my-split");
+  assert.equal(calls.audit.splitId, "personal-split");
 });
 
 test("returns a conflict and does not audit when optimistic concurrency fails", async () => {
