@@ -33,6 +33,7 @@ const GymReviewRoutes = require('./Routes/gymReviewRoutes');
 const AnnouncementRoutes = require('./Routes/announcementRoutes');
 const EntryLogsRoutes = require('./Routes/entryLogsRoutes');
 const LeaderboardRoutes = require('./Routes/LeaderboardRoutes');
+const McpRoutes = require('./Routes/mcpRoutes');
 
 
 
@@ -81,6 +82,7 @@ app.use('/training', TrainingRoutes);
 app.use('/review', ReviewRoutes);
 app.use('/grievances', GrievanceRoutes);
 app.use('/leaderboard', LeaderboardRoutes);
+app.use('/mcp', McpRoutes());
 
 app.use((error, req, res, next) => {
     if (res.headersSent) {

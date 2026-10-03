@@ -1,6 +1,7 @@
 const User = require('../Models/User');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const generateTokens = require('../Utils/generateTokens');
 require('dotenv').config();
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -81,8 +82,18 @@ exports.login = async (req, res) => {
         // Send email asynchronously in the background
         sendEmail(user.email, "Login Alert", htmlContent);
 
-        return res.status(200).json({ user, message: "Access Granted" });
+        const safeUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+        delete safeUser.password;
+        const tokens = generateTokens({
+            userId: user._id.toString(),
+            role: 'user',
+        });
 
+        return res.status(200).json({
+            user: safeUser,
+            message: "Access Granted",
+            ...tokens,
+        });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }

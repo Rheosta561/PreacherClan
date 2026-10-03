@@ -109,7 +109,21 @@ You will need to set environment variables to securely store sensitive credentia
 
 After installation and configuration, you can run the PreacherClan web application. The exact command will depend on the technology stack.
 
+### MCP server
 
+The backend exposes a stateless MCP Streamable HTTP endpoint at `POST /mcp`. MCP requests must include a Preacher Clan user access token:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+The endpoint provides `get_user_context`, `get_current_workout_split`, and `update_workout_split`. The update tool requires the signed `mcp:write:split` scope, only targets the authenticated user's active split, validates the requested changes, checks split ownership (or admin status), and writes an audit record. User access tokens issued by the backend include this scope. `ACCESS_TOKEN_SECRET` must be configured; refresh tokens and gym access tokens are not accepted.
+
+Run the backend tests, including the MCP protocol and authentication integration tests, with:
+
+```bash
+npm test
+```
 
 
 

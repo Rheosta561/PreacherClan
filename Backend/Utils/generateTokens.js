@@ -6,6 +6,7 @@ function generateTokens({ userId, role }) {
       sub: userId,
       role,
       type: "access",
+      scope: role === "user" ? ["mcp:write:split"] : [],
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
