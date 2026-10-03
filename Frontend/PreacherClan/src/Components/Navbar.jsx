@@ -1,4 +1,4 @@
-import React, { useState , useEffect } from "react";
+import React, { useState } from "react";
 import { Link, redirect, useNavigate } from "react-router-dom";
 import {
   MessageSquare,
@@ -7,84 +7,20 @@ import {
   HelpCircle,
   MessageCircle,
   Bell,
-  LogOutIcon
 } from "lucide-react";
 import { useNotification } from "../context/NotificationContext"; // adjust this import path
-import axios from "axios";
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-
   const user = JSON.parse(localStorage.getItem("user"));
-  console.log("User from localStorage:", user);
-  const [profile , setProfile] = useState({});
+  if (!user) {
+    redirect("/");
+  }
   const navigate = useNavigate();
-
-  // Clear profile from localStorage on each render
-  
-  // const profile = JSON.parse(localStorage.getItem("profile"));
-  // console.log("Profile from localStorage:", profile);
-
-
-  
   const handleNavigate = (path) => {
     setIsOpen(false);
     navigate(path);
   };
-  
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const second = localStorage.getItem("profile");
-    if (second) {
-      setProfile(JSON.parse(second));
-    } else {
-      if(user){
-        
-      }
-      const response = await axios.get(`https://preacherclan.onrender.com/profile/${user?._id}`);
-      console.log("Profile response:", response.data);
-      if(response.status !==200){
-        console.error("Failed to fetch profile:", response.statusText);
-        navigate("/onboarding");
-      }else{
-        setProfile(response.data);
-        localStorage.setItem("profile", JSON.stringify(response.data));
-      }
-
-      
-    }
-
-        
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-       
-        
-      }
-
-    }
-    fetchProfile();
-    
-  
-    
-  }, []);
-
-  const handleLogout = () =>{
-    localStorage.removeItem("user");
-    localStorage.removeItem("profile");
-    localStorage.removeItem("notifications");
-    localStorage.removeItem("token");
-    localStorage.removeItem("gyms");
-    setProfile({});
-    setIsOpen(false);
-    navigate("/login");
-  }
-
-  const handleChatClick = ()=>{
-    navigate('/chats');
-  }
-
-  
 
   const { notifications } = useNotification(); // 👈 Use notifications from context
 
@@ -93,15 +29,16 @@ function Navbar() {
       <div className="max-w-screen-xl mx-auto flex items-center justify-between px-4 py-4">
         {/* Left: Logo & Avatar */}
         <Link to="/profile" className="flex items-center space-x-3">
-          
+          <div className="p-1 rounded-full bg-zinc-950">
+            <MessageSquare size={22} className="text-zinc-300" />
+          </div>
           <img
-            src={ profile.profileImage || "https://via.placeholder.com/150"}
+            src="https://www.tvinsider.com/wp-content/uploads/2024/07/john-cena-1014x570.jpg"
             alt="Avatar"
             className="h-8 w-8 rounded-full object-cover border border-zinc-800"
           />
-          <p className="text-zinc-300 text-xs">Hi {user?.name || ""}</p>
+          <p className="text-zinc-300 text-xs">Hi {user.name}</p>
         </Link>
-        
 
         {/* Right: Notification + Hamburger */}
         <div className="flex items-center space-x-4">
@@ -117,9 +54,6 @@ function Navbar() {
                 {notifications.length > 9 ? "9+" : notifications.length}
               </span>
             )}
-          </div>
-          <div className="p-1 rounded-full bg-zinc-950">
-            <MessageSquare size={22} className="text-zinc-300" onClick={handleChatClick} />
           </div>
 
           {/* Hamburger (Mobile) */}
@@ -141,7 +75,7 @@ function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex md:-mt-4 space-x-6 text-sm">
-          <NavLinks handleLogout={handleLogout} />
+          <NavLinks />
         </div>
       </div>
 
@@ -149,7 +83,7 @@ function Navbar() {
       {isOpen && (
         <div className="md:hidden bg-zinc-950 border-t w-full border-zinc-800">
           <ul className="flex flex-col p-4 space-y-2 w-full text-sm">
-            <NavLinks onClick={() => setIsOpen(false)} handleLogout={handleLogout} />
+            <NavLinks onClick={() => setIsOpen(false)} />
           </ul>
         </div>
       )}
@@ -159,28 +93,21 @@ function Navbar() {
 
 const iconClasses = "inline-block mr-1 h-4 w-4 stroke-zinc-400";
 
-const NavLinks = ({ onClick, handleLogout }) => {
+const NavLinks = ({ onClick }) => {
   const links = [
     { to: "/", label: "About", Icon: Info },
     { to: "/services", label: "Pledge", Icon: Shield },
     { to: "/pricing", label: "Support", Icon: HelpCircle },
     { to: "/contact", label: "Feedback", Icon: MessageCircle },
-    { to: "/login", label: "Logout", Icon: LogOutIcon, isLogout: true },
   ];
 
   return (
     <>
-      {links.map(({ to, label, Icon, isLogout }) => (
+      {links.map(({ to, label, Icon }) => (
         <li key={to} className="w-full h-full">
           <Link
             to={to}
-            onClick={(e) => {
-              if (onClick) onClick();
-              if (isLogout) {
-                e.preventDefault(); // prevent default navigation
-                handleLogout();     // call logout logic
-              }
-            }}
+            onClick={onClick}
             className="px-3 w-full rounded-sm text-zinc-300 hover:text-white py-2 hover:bg-zinc-900 md:hover:bg-transparent md:p-0 md:hover:text-zinc-500 transition block flex items-center"
           >
             <Icon size={16} className={iconClasses} />
@@ -191,6 +118,5 @@ const NavLinks = ({ onClick, handleLogout }) => {
     </>
   );
 };
-
 
 export default Navbar;

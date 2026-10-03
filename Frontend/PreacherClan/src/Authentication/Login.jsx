@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import bg from '../assets/bg.jpg';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
@@ -9,29 +9,9 @@ const Login = () => {
     const handleClick = () => {
         navigate('/signup');
     };
-    const setUser = (user)=>{
-        localStorage.setItem('user' , user);
-
-    }
-    useEffect(() => {
-        const fetchUserFromLocalStorage = ()=>{
-            const user = localStorage.getItem('user');
-    if(user){
-        navigate('/dashboard');
-    }else{
-        return ;
-    }
-
-        }
-        fetchUserFromLocalStorage();
-    
-      
-    }, [])
-    
-    
 
     const handleGoogleLogin = () => {
-        window.location.href = "https://preacherclan.onrender.com/auth/google";
+        window.location.href = "http://localhost:3000/auth/google";
     };
     
 
@@ -70,7 +50,7 @@ const Login = () => {
                         
                         <div className="flex justify-between items-center mb-4">
                             <label className="text-zinc-200 text-sm flex items-center">
-                                <input type="checkbox" className="mr-2" onClick={setUser} /> Remember me
+                                <input type="checkbox" className="mr-2" /> Remember me
                             </label>
                             <a href="#" className="text-zinc-200 text-sm">Forgot password?</a>
                         </div>

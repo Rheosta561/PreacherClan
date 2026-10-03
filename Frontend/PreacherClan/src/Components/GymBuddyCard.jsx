@@ -27,11 +27,13 @@ function GymBuddyCard({ profile, onSwipe }) {
       initial={{ x: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
-   
+      {/* Conditionally show match badge */}
+      {/* You can also pass a prop to control this */}
+      {/* For example, show if direction was right */}
 
       {/* Profile Image */}
       <img
-        src={profile.profileImage}
+        src={profile.image}
         alt={`${profile.name} profile`}
         className="w-full h-2/3 object-cover"
       />
@@ -42,12 +44,12 @@ function GymBuddyCard({ profile, onSwipe }) {
       {/* Info */}
       <div className="absolute bottom-0 left-0 right-0 p-4 space-y-1 bg-zinc-950/80">
         <h2 className="text-lg font-semibold">
-          {profile.name}, 18
+          {profile.name}, {profile.age}
         </h2>
-        <p className="text-sm text-zinc-400">Goal: {profile.fitnessGoals[0]} </p>
-        <p className="text-sm text-zinc-400">Training at {profile.gym}</p>
+        <p className="text-sm text-zinc-400">Goal: {profile.goal}</p>
+        <p className="text-sm text-zinc-400">Training at {profile.time}</p>
         <div className="flex flex-wrap gap-2 mt-2 text-xs text-zinc-300">
-          {profile.exerciseGenre.map((tag, idx) => (
+          {profile.tags.map((tag, idx) => (
             <span key={idx} className="bg-zinc-800 px-2 py-1 rounded-full">
               {tag}
             </span>

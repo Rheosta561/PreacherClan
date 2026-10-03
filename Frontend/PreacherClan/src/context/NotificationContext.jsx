@@ -11,11 +11,11 @@ export const NotificationProvider = ({ children }) => {
 
   useEffect(() => {
     const user = localStorage.getItem('user');
-    const userId = user ? JSON.parse(user)?._id : null;
+    const userId = user ? JSON.parse(user)._id : null;
    
     if (!userId) return;
 
-    const socket = io('https://preacherclan.onrender.com'); // adjust your server URL
+    const socket = io('http://localhost:3000'); // adjust your server URL
     socketRef.current = socket;
 
     socket.emit('userOnline', userId);

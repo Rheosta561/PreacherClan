@@ -137,6 +137,7 @@ function ChatScreen() {
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
+    console.log(file);
     if (!file) return;
     const fileType = file.type.split('/')[0];
     let messageType = 'file';
@@ -152,6 +153,7 @@ function ChatScreen() {
 
     try {
       const res = await axios.post('https://preacherclan.onrender.com/message/send', formData);
+      console.log(res);
       const newMsg = res.data;
       const mediaFile = JSON.parse(res.data.media);
       mediaFile.forEach((m) => {

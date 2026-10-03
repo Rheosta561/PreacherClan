@@ -5,16 +5,14 @@ import { jwtDecode } from "jwt-decode";
 
 import search from "./assets/search.png";
 import SearchResult from "./Components/SearchResult";
-import BottomRow from "./Components/BottomRow";
+import BottomRow from "./Components/bottomRow";
 import GymInfoCard from "./Components/GymInfoCard";
 import AdviceCard from "./Components/AdviceCard";
 import ProfileCard from "./Components/ProfileCard";
-import { div, nav, param } from "framer-motion/client";
+import { div, param } from "framer-motion/client";
 import axios from "axios";
 import { toast } from "sonner";
 import { usePersistentState } from "./hooks/usePersistentState";
-import { Navbar } from "@heroui/react";
-import { useNavigate } from "react-router-dom";
 
 function Dashboard() {
     const scrollRef = useRef(null);
@@ -22,7 +20,6 @@ function Dashboard() {
     const [searchQuery, setSearchQuery] = useState("");
     const [Gyms, setGyms] = usePersistentState("gyms", []);
     const [user, setUser] = usePersistentState("user", null);
-    const navigate = useNavigate();
 function getYouTubeEmbedUrl(videoUrl, autoplay = false) {
   try {
     const url = new URL(videoUrl);
@@ -79,13 +76,13 @@ const params = new URLSearchParams(window.location.search);
     const promoCards = [
   {
     title: "Top Preacher",
-    shortDesc: "Record for the highest preacher score ever recorded.",
+    shortDesc: "John holds the highest preacher score ever recorded.",
     longDesc: "The Top Preacher title is awarded to the strongest warrior in the Preacher Clan—dominating the leaderboard with sheer will and deadlifts.",
     image: "https://images.unsplash.com/photo-1603287681836-b174ce5074c2?w=1400&auto=format&fit=crop&q=60"
   },
   {
     title: "Top Clan",
-    shortDesc: "The Gym that leads the charge with the most active preachers.",
+    shortDesc: "Pack Physique leads the charge with the most active preachers.",
     longDesc: "Top Clan is the gym with the most warriors dedicated to the preacher creed. It's where steel meets loyalty.",
     image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1400&auto=format&fit=crop&q=60"
   },
@@ -118,15 +115,14 @@ useEffect(() => {
       
       console.log("Decoded Token:", decoded);
       try {
-        const response = await axios.get(`https://preacherclan.onrender.com/user/${userId}`);
-        console.log("User Found");
+        const response = await axios.get(`http://localhost:3000/user/${userId}`);
+        console.log("User Found",response.data);
         localStorage.setItem('user', JSON.stringify(response.data));
         localStorage.setItem('token', token);
         toast.success("Welcome to Preacher Clan!");
         
       } catch (error) {
         console.error("Error fetching user data:", error);
-        toast.error("Failed to fetch user data. Please try again later.");
 
         
       }
@@ -140,7 +136,7 @@ useEffect(() => {
 useEffect(() => {
   const fetchGyms = async()=>{
     try {
-      const response = await axios.get("https://preacherclan.onrender.com/gym/all");
+      const response = await axios.get("http://localhost:3000/gym/all");
       if(response.data && response.data.length > 0) {
         console.log("Total Gyms Found:", response.data.length);
         setGyms(response.data);
@@ -162,8 +158,7 @@ useEffect(() => {
 
 
     return (
-        <div className="h-screen w-full  bg-zinc-950">
-          <Navbar/>
+        <div className="h-screen w-full relative bg-zinc-950">
             {/* <img src={bg} className="h-full w-full absolute inset-0 brightness-50 opacity-80" alt="" /> */}
             <div className="h-screen overflow-y-scroll relative p-6 text-white">
                 <p className="text-2xl font-semibold"></p>
@@ -232,9 +227,7 @@ useEffect(() => {
 
                     {filteredGyms.length > 0 ? (
                         filteredGyms.map((gym, index) => (
-                            <div key={index} onClick={() => { navigate(`/join/gym/${gym._id}`)
-                                   } }>
-
+                            <div key={index}>
                                 <SearchResult name={gym.name} city={gym.city} country={gym.country} image={gym.image} />
                                 {index < filteredGyms.length - 1 && (
                                     <hr className="w-1/2 md:w-5/6 mx-auto border-zinc-400 opacity-35" />
@@ -257,13 +250,12 @@ useEffect(() => {
           name: gym.name,
           image: gym.image,
           location: `${gym.location}, India`,
-          trainers:  gym.trainers.length, 
-          equipments: gym.equipments || ["Treadmill", "Dumbbells", "Barbells"],
+          trainers:  "10", 
+          equipments: ["Treadmills", "Dumbbells", "Crossfit Rig", "Kettlebells"], 
           fees: "1500", 
           onJoin: () => alert(`Welcome to ${gym.name}!`),
           featured: index % 2 === 0, 
-          rating: gym.rating,
-          gymId : gym._id 
+          rating: "5", 
         }}
       />
       
@@ -309,10 +301,7 @@ useEffect(() => {
     preacherRank: "Elite Preacher",
     isVerified: true,
   }}
-  onRequest={() => toast("🪓 Request Sent!", {
-        description: `Your message sails to Aarav's village.`,
-        className: "bg-zinc-900 text-white border border-red-800 shadow-lg ",
-      })}
+  onRequest={() => alert("Request sent to Aarav! 🏋️‍♂️")}
 />
                         <ProfileCard
                             profile={{
@@ -325,10 +314,7 @@ useEffect(() => {
                                 preacherRank: "Elite Preacher",
                                 isVerified: true,
                             }}
-                            onRequest={() => toast("🪓 Request Sent!", {
-                                  description: `Your message sails to Jane's village.`,
-                                  className: "bg-zinc-900 text-white border border-red-800 shadow-lg ",
-                                })}
+                            onRequest={() => alert("Request sent to Jane! 🏃‍♀️")}
                         />
                     </div>
                 </div>
