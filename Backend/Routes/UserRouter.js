@@ -44,4 +44,20 @@ router.patch('/:userId/onboard', async (req, res) => {
     }
 });
 
+const auth = require('../Middleware/auth');
+
+router.patch('/:userId/split', auth, async (req, res) => {
+    try {
+        if (req.user.id !== req.params.userId) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+        const { currentSplitId } = req.body;
+        const user = await User.findByIdAndUpdate(req.params.userId, { currentSplitId }, { new: true });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        res.json({ message: 'Current split updated successfully', user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

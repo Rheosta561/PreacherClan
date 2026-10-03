@@ -4,9 +4,11 @@ const User = require("../Models/User");
 // Start or resume a training session
 exports.startOrResumeSession = async (req, res) => {
   try {
-    const { userId, splitId, day } = req.body;
+    // userId is derived from the verified JWT — not trusted from the request body
+    const userId = req.user.id;
+    const { splitId, day } = req.body;
 
-    if (!userId || !splitId || !day) {
+    if (!splitId || !day) {
       return res.status(400).json({ success: false, message: "Missing required fields." });
     }
 
@@ -47,6 +49,11 @@ exports.updateProgress = async (req, res) => {
       return res.status(404).json({ success: false, message: "Session not found." });
     }
 
+    // Ownership check — only the session owner may update it
+    if (session.userId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Forbidden." });
+    }
+
     if (session.status !== "in_progress") {
       return res.status(400).json({ success: false, message: "Session is not in progress." });
     }
@@ -74,6 +81,11 @@ exports.completeSession = async (req, res) => {
     const session = await TrainingSession.findById(sessionId);
     if (!session) {
       return res.status(404).json({ success: false, message: "Session not found." });
+    }
+
+    // Ownership check — only the session owner may complete it
+    if (session.userId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Forbidden." });
     }
 
     if (session.status !== "in_progress") {
@@ -123,14 +135,25 @@ exports.completeSession = async (req, res) => {
 exports.cancelSession = async (req, res) => {
   try {
     const { sessionId } = req.body;
-    const session = await TrainingSession.findByIdAndUpdate(
-      sessionId,
-      { status: "cancelled", completedAt: new Date() },
-      { new: true }
-    );
+
+    const session = await TrainingSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ success: false, message: "Session not found." });
+    }
+
+    // Ownership check — only the session owner may cancel it
+    if (session.userId.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Forbidden." });
+    }
+
+    session.status = "cancelled";
+    session.completedAt = new Date();
+    await session.save();
+
     res.status(200).json({ success: true, session });
   } catch (error) {
     console.error("Error cancelling session:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+

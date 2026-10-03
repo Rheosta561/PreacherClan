@@ -60,9 +60,11 @@ exports.createSplit = async (req, res) => {
       description,
       exercises,
       cover_image,
-      creator ,
-      creatorId ,
+      creator,
     } = req.body;
+
+    // Always use the authenticated user's ID — never trust a caller-supplied creatorId
+    const creatorId = req.user.id;
 
     const split = await WorkoutSplit.create({
       split_id: generateSplitId(),
@@ -83,11 +85,9 @@ exports.createSplit = async (req, res) => {
 exports.updateSplit = async (req, res) => {
   try {
     const { splitId } = req.params;
-    const { userId } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "UserId is required" });
-    }
+    // Derive identity from the verified JWT — never from the request body
+    const userId = req.user.id;
 
     const split = await WorkoutSplit.findOne({ split_id: splitId });
 
