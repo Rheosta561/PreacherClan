@@ -150,6 +150,8 @@ MCP_WRITE_RATE_LIMIT_PER_MINUTE=20
 
 Production must configure `FRONTEND_URL` as the deployed website origin (for example, `https://www.preacherclan.in`) so workout share links point to the frontend. The share URL falls back to the first `CLIENT_ORIGIN` and then `https://preacherclan.in` if this variable is unset. Also configure `MCP_ISSUER_URL`, `MCP_RESOURCE_URL`, and `MCP_CONSENT_URL` with the actual public HTTPS URLs and allow the deployed frontend origin through `CLIENT_ORIGIN` or `MCP_ALLOWED_ORIGINS`. Generate `MCP_ACCESS_TOKEN_SECRET` independently of the REST JWT keys. When TLS terminates at a reverse proxy, configure `TRUST_PROXY` to the exact trusted hop count or proxy subnet so Express can verify HTTPS; do not trust arbitrary proxies.
 
+Standard OAuth endpoints (`/authorize`, `/register`, `/token`, `/revoke`) and OAuth discovery metadata use the MCP SDK's CORS policy and are not restricted by the MCP tool endpoint origin allowlist. This permits web-based clients such as Claude.ai to perform dynamic client registration. MCP tool requests and the app-specific consent APIs remain origin-restricted.
+
 Access tokens expire after 10 minutes by default, and refresh tokens rotate. Reuse of a rotated refresh token revokes its grant; revoking a refresh token invalidates all tokens in its grant. OAuth metadata is published at `/.well-known/oauth-authorization-server`; the protected-resource metadata for `/mcp` is at `/.well-known/oauth-protected-resource/mcp`. The OAuth endpoints are `/register`, `/authorize`, `/token`, and `/revoke`. Users see the requesting client's name, redirect host and permissions on the V2 consent page before approval.
 
 | Scope | Tool |

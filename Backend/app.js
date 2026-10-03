@@ -7,6 +7,7 @@ const env = require("./config/env");
 const mcpOAuthConfig = require("./config/mcpOAuth");
 const mcpOAuthProvider = require("./Services/mcpOAuthProviderInstance");
 const mcpOAuthRoutes = require("./Routes/mcpOAuthRoutes");
+const { shouldEnforceMcpOrigin } = require("./Utils/mcpOriginPolicy");
 const { scopes: mcpScopes } = mcpOAuthConfig;
 const conn = require('./Connection/Connection');
 const ProfileRoutes = require('./Routes/ProfileRoutes');
@@ -85,7 +86,11 @@ app.use((req, res, next) => {
         });
     }
     const origin = req.get("origin");
-    if (isMcpRoute && origin && !env.isOriginAllowed(origin)) {
+    if (
+        shouldEnforceMcpOrigin(req.path) &&
+        origin &&
+        !env.isOriginAllowed(origin)
+    ) {
         return res.status(403).json({ error: "Origin is not allowed" });
     }
     return next();
