@@ -23,12 +23,11 @@ exports.addNotification = async (req, res) => {
 
         await notification.save();
         // Emit notification to the user if they are online
-        if (type === 'email' || true) {
-
+        if (type === 'email') {
             await emailService.sendEmail({
                 to: user.email,
                 subject: 'You Have a New Notification',
-                text: message
+                text: message,
             });
         }
         const socketId = onlineUsers.get(userId.toString());
@@ -155,12 +154,11 @@ exports.sendMultipleNotifications = async (req, res) => {
 </html>
 `;
 
-       await emailService.sendEmail(
-                user.email,
-                 'You Have a New Notification',
-                html
-                
-            );
+       await emailService.sendEmail({
+         to: user.email,
+         subject: 'You Have a New Notification',
+         html,
+       });
 
       const socketId = onlineUsers.get(user._id.toString());
       if (socketId) {

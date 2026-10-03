@@ -1,14 +1,14 @@
 const cron = require('node-cron');
 const User = require('../Models/User'); 
-const nodemailer = require('nodemailer');
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL,
-    pass: process.env.PASS
+const { sendEmail } = require('../Utils/emailService');
+
+const sendScheduledEmail = async (message) => {
+  try {
+    await sendEmail(message);
+  } catch (error) {
+    console.error(`Scheduled email delivery failed to ${message.to}:`, error.message);
   }
-});
-const {sendEmail} = require('../Utils/emailService');
+};
 
 function setupResetJobs() {
   // Monthly reset: 00:00 on 1st day of every month
@@ -20,25 +20,27 @@ function setupResetJobs() {
       const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
       for (const user of users) {
+        const previousStreak = user.streak?.count || 0;
         user.monthlyHistory.push({
-          month: currentMonth,
-          streak: user.streak,
+          month: new Date().toLocaleString('default', { month: 'long' }),
+          streak: previousStreak,
           preacherScore: user.preacherScore,
         });
 
-        user.streak = 0;
+        user.streak = { count: 0, todayUpdated: false };
         user.preacherScore = 0;
         user.lastMonthlyReset = new Date();
 
         await user.save();
-        sendEmail(user.email, 
-          'Monthly Streak Reset', 
-          `<p>Dear ${user.name},</p>
-           <p>Your monthly streak has been reset. Your previous streak of ${user.streak} has been recorded for the month of ${currentMonth}.</p>
+        await sendScheduledEmail({
+          to: user.email,
+          subject: 'Monthly Streak Reset',
+          html: `<p>Dear ${user.name},</p>
+           <p>Your monthly streak has been reset. Your previous streak of ${previousStreak} has been recorded for ${currentMonth}.</p>
            <p>Keep up the good work!</p>
            <p>Best regards,</p>
-           <p>Team Preacher Clan</p>`
-        );
+           <p>Team Preacher Clan</p>`,
+        });
       }
 
       console.log(`Monthly reset completed for ${users.length} users.`);
@@ -54,14 +56,17 @@ function setupResetJobs() {
       const result = await User.updateMany({}, { workoutHitsPerWeek: 0 });
 
       console.log(`Weekly workout hits reset for ${result.modifiedCount} users.`);
-      sendEmail(process.env.EMAIL, 
-        'Weekly Workout Hits Reset', 
-        `<p>Dear Team,</p>
+      if (process.env.EMAIL) {
+        await sendScheduledEmail({
+          to: process.env.EMAIL,
+          subject: 'Weekly Workout Hits Reset',
+          html: `<p>Dear Team,</p>
          <p>The weekly workout hits have been reset for all users.</p>
          <p>Keep encouraging our community to stay active!</p>
          <p>Best regards,</p>
-         <p>Team Preacher Clan</p>`
-      );
+         <p>Team Preacher Clan</p>`,
+        });
+      }
     } catch (error) {
       console.error('Error during weekly reset:', error);
     }

@@ -48,7 +48,7 @@ function createSplitService({
     return split;
   }
 
-  async function updateCurrentWorkoutSplit(userId, changes) {
+  async function updateCurrentWorkoutSplit(userId, changes, auditContext = {}) {
     const user = await getUserForSplitAccess(userId);
     if (!user.currentSplitId) {
       throw createServiceError("User has no active workout split", 404);
@@ -108,6 +108,8 @@ function createSplitService({
         role: user.isAdmin ? "admin" : "user",
         source: "mcp",
       },
+      ...(auditContext.clientId ? { clientId: auditContext.clientId } : {}),
+      ...(auditContext.scopes ? { scopes: auditContext.scopes } : {}),
       action: "update_workout_split",
       splitId: updatedSplit.split_id,
       changes: { before, after },

@@ -20,10 +20,29 @@ if (missing.length) {
   console.warn(`Missing required env vars: ${missing.join(", ")}`);
 }
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
-  .split(",")
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN || "",
+  process.env.MCP_ALLOWED_ORIGINS || "",
+]
+  .flatMap((value) => value.split(","))
   .map((value) => value.trim())
   .filter(Boolean);
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  if (isProduction) return false;
+
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === "http:" &&
+      ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+    );
+  } catch (error) {
+    return false;
+  }
+};
 
 const env = {
   nodeEnv,
@@ -51,14 +70,19 @@ const env = {
     maxAge: toNumber(process.env.REFRESH_COOKIE_MAX_AGE_MS, 30 * 24 * 60 * 60 * 1000),
   },
   refreshSessionLimit: toNumber(process.env.GYM_REFRESH_SESSION_LIMIT, 5),
+  isOriginAllowed,
   cors: {
     credentials: true,
     origin(origin, callback) {
-      if (!origin || !allowedOrigins.length || allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      if (!origin) {
+        return callback(null, false);
       }
 
-      return callback(new Error("CORS origin not allowed"));
+      if (isOriginAllowed(origin)) {
+        return callback(null, origin);
+      }
+
+      return callback(null, false);
     },
   },
 };

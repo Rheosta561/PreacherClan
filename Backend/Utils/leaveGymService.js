@@ -119,7 +119,12 @@ const leaveGym = async(userId, gymId)=>{
 </html>
 `
 
-        
+        await emailService.sendEmail({
+            to: user.email,
+            subject: `You left ${gym.name}`,
+            html: htmlContent,
+        });
+
     } catch (error) {
         throw new Error(`Error leaving gym: ${error.message}`);
     }

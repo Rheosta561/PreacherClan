@@ -1,5 +1,13 @@
+require('dotenv').config({ path: require('node:path').join(__dirname, '.env') });
+
 const express = require('express');
+const { mcpAuthRouter } = require("@modelcontextprotocol/sdk/server/auth/router.js");
 const app = express();
+const env = require("./config/env");
+const mcpOAuthConfig = require("./config/mcpOAuth");
+const mcpOAuthProvider = require("./Services/mcpOAuthProviderInstance");
+const mcpOAuthRoutes = require("./Routes/mcpOAuthRoutes");
+const { scopes: mcpScopes } = mcpOAuthConfig;
 const conn = require('./Connection/Connection');
 const ProfileRoutes = require('./Routes/ProfileRoutes');
 const useragent = require("express-useragent");
@@ -38,8 +46,26 @@ const McpRoutes = require('./Routes/mcpRoutes');
 
 
 conn();
-app.use(express.json());
-app.use(express.urlencoded({extended:true}));
+const trustProxySetting = process.env.TRUST_PROXY?.trim();
+const trustProxy =
+    trustProxySetting === "true"
+        ? true
+        : trustProxySetting === undefined ||
+            trustProxySetting === "" ||
+            trustProxySetting === "false"
+          ? false
+          : /^\d+$/.test(trustProxySetting)
+            ? Number(trustProxySetting)
+            : trustProxySetting
+                .split(",")
+                .map((value) => value.trim())
+                .filter(Boolean);
+app.set("trust proxy", trustProxy);
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
+app.use(express.urlencoded({
+    extended: true,
+    limit: process.env.JSON_BODY_LIMIT || "1mb",
+}));
 const authRoutes = require('./Routes/AuthRoutes');
 const JoinGymRoutes = require('./Routes/joinGymRouter');
 const passport = require("passport");
@@ -47,8 +73,37 @@ const resetJobs = require("./Utils/resetJobs");
 require("./config/passport");
 app.use(passport.initialize());
 app.use(useragent.express());
-app.use(cors());
+app.use((req, res, next) => {
+    const isMcpRoute =
+        req.path === "/mcp" ||
+        req.path.startsWith("/mcp/") ||
+        ["/authorize", "/token", "/register", "/revoke"].includes(req.path) ||
+        req.path.startsWith("/.well-known/");
+    if (isMcpRoute && env.isProduction && !req.secure) {
+        return res.status(426).json({
+            error: "HTTPS is required for MCP OAuth and MCP requests",
+        });
+    }
+    const origin = req.get("origin");
+    if (isMcpRoute && origin && !env.isOriginAllowed(origin)) {
+        return res.status(403).json({ error: "Origin is not allowed" });
+    }
+    return next();
+});
+app.use(cors(env.cors));
 resetJobs.setupResetJobs();
+
+app.use(
+    "/",
+    mcpAuthRouter({
+        provider: mcpOAuthProvider,
+        issuerUrl: mcpOAuthConfig.issuerUrl,
+        resourceServerUrl: mcpOAuthConfig.resourceUrl,
+        scopesSupported: mcpScopes,
+        resourceName: "Preacher Clan MCP",
+    })
+);
+app.use("/mcp/oauth", mcpOAuthRoutes);
 
 
 app.get('/' , (req,res)=>{

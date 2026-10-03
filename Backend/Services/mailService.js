@@ -10,7 +10,7 @@ const sendAnnouncementEmail = async ({ to, subject, html }) => {
   }
 
   try {
-    await sendEmail(to, subject, html);
+    await sendEmail({ to, subject, html });
     return {
       attempted: true,
       sent: true,

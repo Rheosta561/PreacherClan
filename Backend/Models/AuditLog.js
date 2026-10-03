@@ -8,6 +8,8 @@ const AuditLogSchema = new mongoose.Schema(
       role: { type: String, required: true, immutable: true },
       source: { type: String, required: true, enum: ["mcp"], immutable: true },
     },
+    clientId: { type: String, trim: true, maxlength: 200, immutable: true },
+    scopes: { type: [String], immutable: true },
     action: {
       type: String,
       required: true,

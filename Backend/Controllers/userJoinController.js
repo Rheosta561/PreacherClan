@@ -129,11 +129,13 @@ const joinController = async(req,res)=>{
 
            res.status(200).json({message:"User joined gym successfully", user, gym});
 
-           void sendEmail(
-               user.email,
-               `Welcome to ${foundGym.name}`,
-               htmlContent
-           );
+           void sendEmail({
+               to: user.email,
+               subject: `Welcome to ${foundGym.name}`,
+               html: htmlContent,
+           }).catch((error) => {
+               console.error("Gym welcome email delivery failed:", error.message);
+           });
 
            return;
 
@@ -179,4 +181,3 @@ const leaveController = async (req, res) => {
 };
 
 module.exports = { joinController, leaveController };
-

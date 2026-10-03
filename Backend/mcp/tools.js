@@ -2,6 +2,7 @@ const { z } = require("zod");
 const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
 const UserService = require("../Services/UserService");
 const SplitService = require("../Services/SplitService");
+const { recordMcpAuditEvent } = require("../Services/mcpAuditService");
 
 const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const DIFFICULTIES = ["Beginner", "Intermediate", "Advanced"];
@@ -109,7 +110,7 @@ function result(value) {
 }
 
 function errorResult(error) {
-  console.error("MCP tool error:", error);
+  console.error("MCP tool error:", error.message || "Unknown error");
   const status = error.statusCode || 500;
   return {
     isError: true,
@@ -117,93 +118,145 @@ function errorResult(error) {
       {
         type: "text",
         text: JSON.stringify({
-          error: status >= 500 ? "Internal server error" : error.message,
+          error:
+            status >= 500
+              ? "Internal server error"
+              : error.code || error.message,
           status,
+          ...(error.requiredScope ? { required_scope: error.requiredScope } : {}),
         }),
       },
     ],
   };
 }
 
-function registerTools(
+const requireScope = (principal, scope) => {
+  if (principal.scopes.includes(scope)) return;
+  const error = new Error("insufficient_scope");
+  error.code = "insufficient_scope";
+  error.statusCode = 403;
+  error.requiredScope = scope;
+  throw error;
+};
+
+function registerScopedTool(
   server,
-  {
-    userId,
-    scopes = [],
-    userService = UserService,
-    splitService = SplitService,
-  }
+  principal,
+  name,
+  requiredScope,
+  handler,
+  auditEvent,
+  onToolExecution
 ) {
   server.registerTool(
-    "get_user_context",
+    name,
     {
-      description:
-        "Return the authenticated user's fitness profile and recent training history. Identity is taken from the access token.",
-      inputSchema: {
-        include_training_history: z.boolean().optional().default(true),
-      },
+      description: handler.description,
+      inputSchema: handler.inputSchema,
     },
-    async ({ include_training_history: includeTrainingHistory }) => {
+    async (args) => {
+      const startedAt = Date.now();
+      let outcome = "success";
+      let httpStatus = 200;
+
       try {
-        return result(
-          await userService.getUserContext(userId, {
-            includeTrainingHistory,
-          })
-        );
+        requireScope(principal, requiredScope);
+        return result(await handler.execute(args));
       } catch (error) {
+        outcome = error.statusCode === 403 ? "denied" : "error";
+        httpStatus = error.statusCode || 500;
         return errorResult(error);
+      } finally {
+        await auditEvent({
+          principal,
+          operation: `tool:${name}`,
+          toolName: name,
+          outcome,
+          httpStatus,
+          durationMs: Date.now() - startedAt,
+        });
+        onToolExecution?.({ toolName: name, outcome, httpStatus });
       }
     }
   );
+}
 
-  server.registerTool(
+function registerTools(
+  server,
+  {
+    principal,
+    userService = UserService,
+    splitService = SplitService,
+    auditEvent = recordMcpAuditEvent,
+    onToolExecution,
+  }
+) {
+  registerScopedTool(
+    server,
+    principal,
+    "get_user_context",
+    "mcp:read:user",
+    {
+      description:
+        "Return the authenticated user's fitness profile and recent training history. Identity is taken from the access token.",
+      inputSchema: z.object({
+        include_training_history: z.boolean().optional().default(true),
+      }).strict(),
+      execute: ({ include_training_history: includeTrainingHistory }) =>
+        userService.getUserContext(principal.userId, {
+          includeTrainingHistory,
+        }),
+    },
+    auditEvent,
+    onToolExecution
+  );
+
+  registerScopedTool(
+    server,
+    principal,
     "get_current_workout_split",
+    "mcp:read:split",
     {
       description:
         "Return the authenticated user's active workout split organized by day.",
       inputSchema: {},
-    },
-    async () => {
-      try {
-        return result(
-          toSplitOutput(await splitService.getCurrentWorkoutSplit(userId))
+      async execute() {
+        return toSplitOutput(
+          await splitService.getCurrentWorkoutSplit(principal.userId)
         );
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
+      },
+    },
+    auditEvent,
+    onToolExecution
   );
 
-  server.registerTool(
+  registerScopedTool(
+    server,
+    principal,
     "update_workout_split",
+    "mcp:write:split",
     {
       description:
         "Rename the authenticated user's active split, update its description, or fully replace exercises for specified days.",
       inputSchema: updateSplitSchema,
-    },
-    async (changes) => {
-      if (!scopes.includes("mcp:write:split")) {
-        return errorResult(
-          Object.assign(new Error("Missing mcp:write:split permission"), {
-            statusCode: 403,
-          })
-        );
-      }
-
-      try {
+      async execute(changes) {
         const { split, updatedDays } =
-          await splitService.updateCurrentWorkoutSplit(userId, changes);
-        return result({
+          await splitService.updateCurrentWorkoutSplit(
+            principal.userId,
+            changes,
+            { clientId: principal.clientId, scopes: principal.scopes }
+          );
+        return {
           success: true,
           split_id: split.split_id,
           message: "Workout split updated successfully",
           updated_days: updatedDays,
           split: toSplitOutput(split),
-        });
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
+        };
+      },
+    },
+    auditEvent,
+    onToolExecution
   );
 }
 

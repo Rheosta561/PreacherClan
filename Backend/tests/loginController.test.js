@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const emailService = require('../Utils/emailService');
 const User = require('../Models/User');
 
 const previousAccessSecret = process.env.ACCESS_TOKEN_SECRET;
@@ -10,10 +10,7 @@ const previousRefreshSecret = process.env.REFRESH_TOKEN_SECRET;
 process.env.ACCESS_TOKEN_SECRET = 'login-controller-test-access-secret';
 process.env.REFRESH_TOKEN_SECRET = 'login-controller-test-refresh-secret';
 
-const originalCreateTransport = nodemailer.createTransport;
-nodemailer.createTransport = () => ({ sendMail: async () => undefined });
 const loginController = require('../Controllers/loginController');
-nodemailer.createTransport = originalCreateTransport;
 
 test.after(() => {
   if (previousAccessSecret === undefined) {
@@ -61,6 +58,7 @@ test('successful username/password login returns usable scoped tokens without th
   };
   t.mock.method(User, 'findOne', async () => user);
   t.mock.method(bcrypt, 'compare', async () => true);
+  t.mock.method(emailService, 'sendEmail', async () => undefined);
 
   const response = createResponse();
   await loginController.login(
@@ -98,6 +96,7 @@ test('invalid password does not return access or refresh tokens', async (t) => {
     password: 'hashed-password',
   }));
   t.mock.method(bcrypt, 'compare', async () => false);
+  t.mock.method(emailService, 'sendEmail', async () => undefined);
 
   const response = createResponse();
   await loginController.login(
@@ -110,4 +109,49 @@ test('invalid password does not return access or refresh tokens', async (t) => {
   assert.equal(response.statusCode, 401);
   assert.equal('accessToken' in response.body, false);
   assert.equal('refreshToken' in response.body, false);
+});
+
+test('password reset emails a generated temporary password without revealing account existence', async (t) => {
+  const user = {
+    email: 'test@example.com',
+    password: 'old-hash',
+    async save() {},
+  };
+  let sentEmail;
+  t.mock.method(User, 'findOne', async () => user);
+  t.mock.method(emailService, 'sendEmail', async (message) => {
+    sentEmail = message;
+  });
+
+  const response = createResponse();
+  await loginController.resetPassword({ body: { email: ' TEST@example.com ' } }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.match(response.body.message, /If an account exists/);
+  assert.equal(sentEmail.to, user.email);
+  const temporaryPassword = sentEmail.text.match(/is: (.+)\n/)[1];
+  assert.ok(await bcrypt.compare(temporaryPassword, user.password));
+  assert.notEqual(user.password, 'old-hash');
+});
+
+test('password reset rolls back the password hash when email delivery fails', async (t) => {
+  const user = {
+    email: 'test@example.com',
+    password: 'old-hash',
+    saveCount: 0,
+    async save() {
+      this.saveCount += 1;
+    },
+  };
+  t.mock.method(User, 'findOne', async () => user);
+  t.mock.method(emailService, 'sendEmail', async () => {
+    throw new Error('provider unavailable');
+  });
+
+  const response = createResponse();
+  await loginController.resetPassword({ body: { email: user.email } }, response);
+
+  assert.equal(response.statusCode, 500);
+  assert.equal(user.password, 'old-hash');
+  assert.equal(user.saveCount, 2);
 });

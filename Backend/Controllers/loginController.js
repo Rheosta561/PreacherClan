@@ -1,33 +1,26 @@
 const User = require('../Models/User');
 const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer');
+const { randomBytes } = require('node:crypto');
 const generateTokens = require('../Utils/generateTokens');
+const emailService = require('../Utils/emailService');
 require('dotenv').config();
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL,  
-        pass: process.env.PASS      
-    }
-});
 
-const sendEmail = async (to, subject, html) => {
-    try {
-        await transporter.sendMail({
-            from: process.env.EMAIL,
-            to,
-            subject,
-            html
-        });
-    } catch (error) {
-        console.error("Error sending email:", error.message);
-    }
+const sendEmailInBackground = (message) => {
+    void emailService.sendEmail(message).catch((error) => {
+        console.error("Email delivery failed:", error.message);
+    });
 };
 
 exports.login = async (req, res) => {
     try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ username });
+        const { username, email, password } = req.body;
+        const identifier = (email || username || "").trim();
+        const user = await User.findOne({
+            $or: [
+                { username: identifier },
+                { email: identifier.toLowerCase() },
+            ],
+        });
 
         if (!user) {
             return res.status(404).json({ error: "User not found", code: "404" });
@@ -80,7 +73,11 @@ exports.login = async (req, res) => {
         </html>`;
 
         // Send email asynchronously in the background
-        sendEmail(user.email, "Login Alert", htmlContent);
+        sendEmailInBackground({
+            to: user.email,
+            subject: "Login Alert",
+            html: htmlContent,
+        });
 
         const safeUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
         delete safeUser.password;
@@ -95,21 +92,35 @@ exports.login = async (req, res) => {
             ...tokens,
         });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        console.error("Login failed:", error.message);
+        const statusCode = error.code === "JWT_CONFIG_MISSING" ? 500 : 400;
+        return res.status(statusCode).json({ error: error.message });
     }
 };
 
-exports.signUp= async(req,res)=>{
+exports.signUp = async (req, res) => {
     try {
-        const{name , email ,username,password}= req.body;
-        const existingUser = await User.findOne({username});
-        if(existingUser){
-            res.status(401).json({error:"Username already exists"});
+        const { name, email, username, password } = req.body;
+        if (![name, email, username, password].every((value) => typeof value === "string" && value.trim())) {
+            return res.status(400).json({ error: "Name, email, username, and password are required" });
         }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedUsername = username.trim();
+        const existingUser = await User.findOne({
+            $or: [{ username: normalizedUsername }, { email: normalizedEmail }],
+        });
+        if (existingUser?.username === normalizedUsername) {
+            return res.status(409).json({ error: "Username already exists" });
+        }
+        if (existingUser) {
+            return res.status(409).json({ error: "Email already exists" });
+        }
+
         const newUser = await User.create({
-            name,
-            email,
-            username,
+            name: name.trim(),
+            email: normalizedEmail,
+            username: normalizedUsername,
             password: await bcrypt.hash(password,10)
         });
         const htmlContent = `
@@ -211,7 +222,7 @@ exports.signUp= async(req,res)=>{
                 <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" class="logo" alt="Preacher Clan Logo">
             </div>
             <div class="content">
-                <p><b>Hi ${username},</b></p>
+                <p><b>Hi ${normalizedUsername},</b></p>
                 <p>Welcome to <b>Preacher Clan</b>! We are thrilled to have you join our growing community of fitness enthusiasts.</p>
                 <p>Preacher Clan is all about collecting ideas from workout lovers to revolutionize fitness in India. Our vision is to build a strong and supportive community where fitness is not just a routine but a movement.</p>
                 
@@ -226,13 +237,97 @@ exports.signUp= async(req,res)=>{
         `;
 
         // Send email asynchronously in the background
-        sendEmail(email, "Welcome to PreacherClan!", htmlContent);
+        sendEmailInBackground({
+            to: normalizedEmail,
+            subject: "Welcome to PreacherClan!",
+            html: htmlContent,
+        });
 
-        res.status(200).json({user:newUser, message:"Registered Successfully"});
+        const safeUser = typeof newUser.toObject === "function" ? newUser.toObject() : { ...newUser };
+        delete safeUser.password;
+        const tokens = generateTokens({ userId: newUser._id.toString(), role: "user" });
+        return res.status(201).json({
+            user: safeUser,
+            message: "Registered Successfully",
+            ...tokens,
+        });
         
     } catch (error) {
-        res.status(404).json({error:"Something went wrong" , message:"Something went wrong"});
-        console.log(error.message);
-        
+        console.error("Signup failed:", error.message);
+        return res.status(500).json({ error: "Something went wrong", message: "Something went wrong" });
     }
-}
+};
+
+const findUserByEmail = (email) => {
+    const escapedEmail = email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return User.findOne({ email: new RegExp(`^${escapedEmail}$`, "i") });
+};
+
+exports.resetPassword = async (req, res) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+    }
+
+    try {
+        const user = await findUserByEmail(email);
+        if (!user) {
+            return res.status(200).json({
+                message: "If an account exists for that email, a temporary password has been sent.",
+            });
+        }
+
+        const previousPasswordHash = user.password;
+        const temporaryPassword = randomBytes(18).toString("base64url");
+        user.password = await bcrypt.hash(temporaryPassword, 10);
+        await user.save();
+
+        try {
+            await emailService.sendEmail({
+                to: user.email,
+                subject: "Your PreacherClan temporary password",
+                text: `Your temporary password is: ${temporaryPassword}\nSign in and change it immediately.`,
+                html: `<p>Your temporary password is:</p><p><strong>${temporaryPassword}</strong></p><p>Sign in and change it immediately.</p>`,
+            });
+        } catch (error) {
+            user.password = previousPasswordHash;
+            try {
+                await user.save();
+            } catch (rollbackError) {
+                console.error("Could not restore password after email failure:", rollbackError.message);
+            }
+            throw error;
+        }
+
+        return res.status(200).json({
+            message: "If an account exists for that email, a temporary password has been sent.",
+        });
+    } catch (error) {
+        console.error("Password reset failed:", error.message);
+        return res.status(500).json({ message: "Unable to reset password right now" });
+    }
+};
+
+exports.changePassword = async (req, res) => {
+    const { email, previousPassword, newPassword } = req.body || {};
+    if (![email, previousPassword, newPassword].every((value) => typeof value === "string" && value.trim())) {
+        return res.status(400).json({ message: "Email and both passwords are required" });
+    }
+
+    try {
+        const user = await findUserByEmail(email.trim());
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        if (!user.password || !(await bcrypt.compare(previousPassword, user.password))) {
+            return res.status(401).json({ message: "Current password is incorrect" });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        await user.save();
+        return res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+        console.error("Password change failed:", error.message);
+        return res.status(500).json({ message: "Unable to update password right now" });
+    }
+};
