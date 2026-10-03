@@ -142,6 +142,24 @@ test("Streamable HTTP exposes authenticated tools and returns only the principal
   t.after(() => mcp.close());
 
   const { tools } = await mcp.client.listTools();
+  assert.match(mcp.client.getInstructions(), /authenticated user's own fitness profile/i);
+  assert.match(mcp.client.getInstructions(), /replaces the entire exercise list/i);
+  assert.match(
+    tools.find(({ name }) => name === "get_user_context").description,
+    /profile or recent training history/
+  );
+  assert.match(
+    tools.find(({ name }) => name === "get_current_workout_split").description,
+    /read this before an update/i
+  );
+  assert.match(
+    tools.find(({ name }) => name === "update_workout_split").description,
+    /Saturday\/Sa/
+  );
+  assert.match(
+    tools.find(({ name }) => name === "update_workout_split").description,
+    /replaces that entire day's exercise list/
+  );
   assert.deepEqual(
     tools.map(({ name }) => name).sort(),
     [
@@ -226,12 +244,17 @@ test("update_workout_split validates changes and records the client context", as
     arguments: {
       day_overrides: [
         {
-          day: "Mo",
+          day: "Saturday",
           exercises: [
             {
               name: "Bench Press",
               sets: 4,
               reps: 8,
+              difficulty: null,
+              target_muscles: null,
+              equipment: null,
+              description: null,
+              instructions: null,
               youtube: "https://youtu.be/example",
             },
           ],
@@ -241,8 +264,11 @@ test("update_workout_split validates changes and records the client context", as
   });
   const update = JSON.parse(updateResult.content[0].text);
   assert.equal(update.success, true);
-  assert.deepEqual(update.updated_days, ["Mo"]);
+  assert.deepEqual(update.updated_days, ["Sa"]);
   assert.equal(receivedChanges.day_overrides[0].exercises[0].sets, 4);
+  assert.equal(receivedChanges.day_overrides[0].day, "Sa");
+  assert.equal(receivedChanges.day_overrides[0].exercises[0].difficulty, undefined);
+  assert.equal(receivedChanges.day_overrides[0].exercises[0].target_muscles, undefined);
   assert.deepEqual(receivedAuditContext, {
     clientId: CLIENT_ID,
     scopes: ["mcp:write:split"],
