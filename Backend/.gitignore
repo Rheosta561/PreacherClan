@@ -1,2 +1,4 @@
 .env
-./*node_modules
+
+# Installed dependencies
+node_modules/
