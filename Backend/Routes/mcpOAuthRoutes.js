@@ -130,4 +130,41 @@ router.post("/dev-token", auth, requireUserAccessToken, async (req, res) => {
   }
 });
 
+// The Python chat service forwards the user's ordinary login access token.
+// This endpoint validates it with the same auth middleware and returns a short
+// lived, read-only MCP token for the MCP protocol connection.
+router.post("/chat-token", auth, requireUserAccessToken, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    const token = await provider.issueChatAgentToken(req.user.id);
+    return res.status(200).json(token);
+  } catch (error) {
+    console.error("Chat MCP token exchange failed:", error.message);
+    return res.status(500).json({ error: "Unable to authenticate chat session" });
+  }
+});
+
+// Validate a separately consented MCP token before the chat service uses it.
+// This keeps the ordinary login token from implicitly granting write scopes.
+router.post("/chat-token/verify", auth, requireUserAccessToken, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  const mcpAccessToken = req.body?.mcp_access_token;
+  if (typeof mcpAccessToken !== "string" || !mcpAccessToken.trim()) {
+    return res.status(400).json({ error: "An MCP access token is required" });
+  }
+  try {
+    const principal = await provider.verifyAccessToken(mcpAccessToken);
+    if (principal.extra?.userId !== String(req.user.id)) {
+      return res.status(403).json({ error: "MCP token belongs to a different user" });
+    }
+    return res.status(200).json({
+      valid: true,
+      subject: principal.extra.userId,
+      scopes: principal.scopes,
+    });
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired MCP access token" });
+  }
+});
+
 module.exports = router;

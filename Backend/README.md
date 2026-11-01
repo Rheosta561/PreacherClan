@@ -136,6 +136,8 @@ Authorization: Bearer <access-token>
 
 The endpoint provides `get_user_context`, `get_current_workout_split`, and `update_workout_split`. Only public clients (`token_endpoint_auth_method: "none"`) using PKCE are supported. OAuth clients and grants are stored in MongoDB. Read scopes are requested by default; the optional `mcp:write:split` scope is never granted implicitly and is unchecked by default in the consent UI. Caller-supplied user IDs are ignored or rejected: tools use only the user bound to the OAuth grant.
 
+The authenticated Lagertha chat service can exchange a user's regular access token at `POST /mcp/oauth/chat-token`. The route validates the login token and issues a short-lived MCP token bound to that user with only `mcp:read:user` and `mcp:read:split`. It does not grant `mcp:write:split`; write access still requires the standard OAuth consent flow. The service keeps the exchanged token server-side and uses it only for MCP calls.
+
 Configure local development with:
 
 ```env

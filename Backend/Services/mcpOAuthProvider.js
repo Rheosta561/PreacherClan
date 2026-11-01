@@ -405,6 +405,28 @@ class McpOAuthProvider {
     return pair;
   }
 
+  // Server-side exchange for the authenticated chat API. This deliberately
+  // grants read-only MCP scopes; writes still require the normal OAuth consent
+  // flow so the user explicitly approves mcp:write:split.
+  async issueChatAgentToken(userId) {
+    const scopes = ["mcp:read:user", "mcp:read:split"];
+    const grant = await this.grantModel.create({
+      clientId: "preacherclan-chat-api",
+      userId,
+      scopes,
+      resource: normalizeResource(config.resourceUrl.href),
+      createdAt: this.now(),
+      revokedAt: null,
+    });
+    const pair = await this.issueTokenPair(grant, scopes);
+    await this.tokenModel.updateOne(
+      { grantId: grant._id, tokenType: "refresh", revokedAt: null },
+      { $set: { revokedAt: this.now() } }
+    );
+    delete pair.refresh_token;
+    return { ...pair, subject: String(userId) };
+  }
+
   async verifyAccessToken(token) {
     const claims = jwt.verify(token, config.accessTokenSecret, {
       algorithms: ["HS256"],
