@@ -8,6 +8,13 @@ exports.addNotification = async (req, res) => {
         const userId = req.params.userId; 
         const {  message, type } = req.body;
 
+        if (req.user?.id !== userId) {
+            return res.status(403).json({ message: 'You can only create notifications for your account' });
+        }
+        if (typeof message !== 'string' || !message.trim()) {
+            return res.status(400).json({ message: 'A notification message is required' });
+        }
+
         // Validate user existence
         const user = await User.findById(userId);
         if (!user) {
@@ -17,8 +24,8 @@ exports.addNotification = async (req, res) => {
         // Create a new notification
         const notification = new Notification({
             userId,
-            message,
-            type
+            message: message.trim(),
+            type: ['info', 'warning', 'error'].includes(type) ? type : 'info'
         });
 
         await notification.save();
@@ -45,6 +52,9 @@ exports.addNotification = async (req, res) => {
 
 exports.sendMultipleNotifications = async (req, res) => {
   try {
+    if (typeof req.body?.message !== 'string' || !req.body.message.trim()) {
+      return res.status(400).json({ message: 'A notification message is required' });
+    }
     const users = await User.find(); // Fetch all users
     const io = getIo();
 
@@ -52,8 +62,8 @@ exports.sendMultipleNotifications = async (req, res) => {
         
       const notification = await Notification.create({
         userId: user._id,
-        message: req.body.message,
-        type: req.body.type,
+        message: req.body.message.trim(),
+        type: ['info', 'warning', 'error'].includes(req.body.type) ? req.body.type : 'info',
       });
       const html = `<!DOCTYPE html>
 <html>

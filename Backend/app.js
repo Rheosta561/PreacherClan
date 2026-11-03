@@ -96,7 +96,6 @@ app.use((req, res, next) => {
     return next();
 });
 app.use(cors(env.cors));
-resetJobs.setupResetJobs();
 
 app.use(
     "/",
@@ -164,6 +163,8 @@ app.use((error, req, res, next) => {
 
 
 const port = process.env.PORT || 3000 ;
-server.listen(port, ()=> {
-    console.log('server + socket.io is up and running on ' + port);
+resetJobs.setupResetJobs().then(() => {
+    server.listen(port, ()=> {
+        console.log('server + socket.io is up and running on ' + port);
+    });
 });

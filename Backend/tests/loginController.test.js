@@ -153,6 +153,46 @@ test('invalid password does not return access or refresh tokens', async (t) => {
   assert.equal('refreshToken' in response.body, false);
 });
 
+test('refresh session exchanges a valid refresh token for a fresh token pair', async (t) => {
+  const userId = '507f1f77bcf86cd799439013';
+  t.mock.method(User, 'findById', () => ({ select: async () => ({ _id: userId }) }));
+  const initialRefresh = jwt.sign(
+    { sub: userId, type: 'refresh' },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: '5m' }
+  );
+  const response = createResponse();
+
+  await loginController.refreshSession({ body: { refreshToken: initialRefresh } }, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(jwt.verify(response.body.accessToken, process.env.ACCESS_TOKEN_SECRET).sub, userId);
+  assert.equal(jwt.verify(response.body.accessToken, process.env.ACCESS_TOKEN_SECRET).type, 'access');
+  assert.equal(jwt.verify(response.body.refreshToken, process.env.REFRESH_TOKEN_SECRET).type, 'refresh');
+});
+
+test('refresh session rejects an expired or invalid refresh token', async () => {
+  const response = createResponse();
+  await loginController.refreshSession({ body: { refreshToken: 'invalid-token' } }, response);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.message, 'Refresh token is invalid or expired');
+});
+
+test('refresh session reports database outages as temporary errors, not invalid credentials', async (t) => {
+  t.mock.method(User, 'findById', () => ({ select: async () => { throw new Error('database unavailable'); } }));
+  const refreshToken = jwt.sign(
+    { sub: '507f1f77bcf86cd799439015', type: 'refresh' },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: '5m' }
+  );
+  const response = createResponse();
+
+  await loginController.refreshSession({ body: { refreshToken } }, response);
+
+  assert.equal(response.statusCode, 500);
+  assert.equal(response.body.message, 'Session refresh is temporarily unavailable');
+});
+
 test('password reset emails a generated temporary password without revealing account existence', async (t) => {
   const user = {
     email: 'test@example.com',

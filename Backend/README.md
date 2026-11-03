@@ -126,6 +126,31 @@ Configure the JWT secrets in the backend environment before starting the API. Ge
 
 After installation and configuration, you can run the PreacherClan web application. The exact command will depend on the technology stack.
 
+## Notifications API
+
+All notification routes are mounted at `/notifications`. Every route requires `Authorization: Bearer <access-token>`. The user-scoped routes also require the requested `userId` to match the authenticated user. Broadcast delivery additionally checks the user's `isAdmin` flag in MongoDB.
+
+| Method and path | Behavior |
+| --- | --- |
+| `GET /notifications/unread/:userId` | Returns `{ "count": number }` for the signed-in user's unread notifications. |
+| `POST /notifications/read/:userId` | Marks all of the signed-in user's notifications as read and returns `{ "success": true, "modifiedCount": number }`. |
+| `POST /notifications/:userId` | Persists a notification for the signed-in user and emits it to that user's active Socket.IO connection. Body: `{ "message": "...", "type": "info" }`; supported types are `info`, `warning`, and `error`. |
+| `POST /notifications/send-multiple` | Admin only. Persists and emails a broadcast to all users and emits it to connected users. Body: `{ "message": "...", "type": "info" }`. |
+
+The Next.js notification context reads the unread count and marks all notifications as read through the first two routes. Live notifications are persisted and delivered over the `notification` Socket.IO event. There is no list-history endpoint yet; the frontend stores live events in local storage.
+
+### Session refresh
+
+`POST /auth/refresh` accepts `{ "refreshToken": "<refresh-token>" }` and returns a new `{ "accessToken", "refreshToken" }` pair. It verifies the refresh token, confirms that its user still exists, and returns `401` only when the refresh credential is missing, invalid, expired, or belongs to a deleted user. Frontend requests refresh tokens when the access token is close to expiry and retry once after an API `401`. A temporary network or server failure does not clear the user's session; the client can retry refresh. A second `401` after a successful refresh is treated as an ended session.
+
+### Weekly user updates
+
+At `00:00` every Monday in `CRON_TIMEZONE` (defaults to `Asia/Kolkata`), the weekly job snapshots each user's `workoutHitsPerWeek`, resets the count, persists an in-app notification, emits it to connected users, and emails the user a weekly training summary. Email failures are logged and counted without stopping delivery to other users. The optional `EMAIL` environment variable still receives the separate operations email about the reset. The weekly delivery flow is covered by a dry-run unit test with email, database, and Socket.IO dependencies stubbed; it does not send real email or contact the database.
+
+## Global Leaderboard
+
+`GET /leaderboard?page=1&limit=20` returns paginated users ordered by the current month's `preacherScore` descending, with `_id` as the stable tie-breaker. `GET /leaderboard/rank/:userId` returns a user's current score and global rank. Training completion awards 10 points at most once per user per day; workout jams and completed challenges also award points in their respective flows. At the start of each month, maintenance archives each user's score with the scored month, year, and streak, then resets the current score and streak. The authenticated history endpoint, `GET /leaderboard/history/:userId`, returns only the signed-in user's records, available years, and the in-progress current month. An optional `?year=2026` filter narrows the returned history while keeping all available years for the filter UI.
+
 ### MCP server
 
 The backend exposes a stateless MCP Streamable HTTP endpoint at `/mcp`. MCP clients authenticate through the server's OAuth 2.1 authorization-code flow with PKCE (S256). A normal Preacher Clan REST access token is used only on the consent page and is **not** an MCP bearer token.

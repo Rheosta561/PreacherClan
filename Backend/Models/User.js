@@ -64,6 +64,8 @@ const userSchema = new mongoose.Schema({
   lastMonthlyReset: { type: Date },
   monthlyHistory: [{
     month: {String , enum: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], },
+    monthNumber: { type: Number, min: 1, max: 12 },
+    year: { type: Number, min: 2000 },
     streak: Number,
     preacherScore: Number
   }],

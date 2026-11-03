@@ -1,4 +1,76 @@
 const user = require("../Models/User");
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+const getScoreHistory = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (req.user.id !== userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const requestedYear = req.query.year ? Number(req.query.year) : undefined;
+    if (requestedYear !== undefined && (!Number.isInteger(requestedYear) || requestedYear < 2000 || requestedYear > 3000)) {
+      return res.status(400).json({ message: "Invalid year" });
+    }
+
+    const currentUser = await user.findById(userId).select("monthlyHistory lastMonthlyReset preacherScore streak").lean();
+    if (!currentUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const history = currentUser.monthlyHistory || [];
+    const lastReset = currentUser.lastMonthlyReset ? new Date(currentUser.lastMonthlyReset) : null;
+    const allRows = history.map((entry, index) => {
+      let year = entry.year;
+      let monthNumber = entry.monthNumber;
+      let month = entry.month;
+      if (!year || !monthNumber) {
+        if (lastReset) {
+          const anchorMonth = lastReset.getMonth() - 1;
+          const anchorDate = new Date(lastReset.getFullYear(), anchorMonth, 1);
+          const monthsBackFromLatest = history.length - 1 - index;
+          const inferred = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - monthsBackFromLatest, 1);
+          year = inferred.getFullYear();
+          monthNumber = inferred.getMonth() + 1;
+          month = MONTHS[monthNumber - 1];
+        } else if (MONTHS.includes(entry.month)) {
+          const monthIndex = MONTHS.indexOf(entry.month);
+          monthNumber = monthIndex + 1;
+        }
+      }
+      return {
+        month: month || MONTHS[(monthNumber || 1) - 1],
+        monthNumber,
+        year,
+        preacherScore: entry.preacherScore || 0,
+        streak: entry.streak || 0,
+      };
+    });
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonthNumber = now.getMonth() + 1;
+    const currentMonthRecorded = allRows.some((entry) => entry.year === currentYear && entry.monthNumber === currentMonthNumber);
+    if (!currentMonthRecorded && ((currentUser.preacherScore || 0) > 0 || history.length > 0)) {
+      allRows.push({
+        month: MONTHS[currentMonthNumber - 1],
+        monthNumber: currentMonthNumber,
+        year: currentYear,
+        preacherScore: currentUser.preacherScore || 0,
+        streak: currentUser.streak?.count || 0,
+        isCurrentMonth: true,
+      });
+    }
+    allRows.sort((a, b) => (b.year || 0) - (a.year || 0) || (b.monthNumber || 0) - (a.monthNumber || 0));
+
+    const years = [...new Set(allRows.map((entry) => entry.year).filter(Boolean))].sort((a, b) => b - a);
+    const rows = allRows.filter((entry) => !requestedYear || entry.year === requestedYear);
+    return res.status(200).json({ history: rows, years });
+  } catch (error) {
+    console.error("Error fetching preacher score history:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 const getGlobalLeaderboard = async (req, res) => {
   try {
@@ -77,4 +149,5 @@ const getUserRank = async (req, res) => {
 module.exports = {
   getGlobalLeaderboard,
   getUserRank,
+  getScoreHistory,
 };

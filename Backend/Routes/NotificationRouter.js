@@ -1,9 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const Notification = require('../Models/Notification');
 const { addNotification ,sendMultipleNotifications } = require('../Controllers/AddNotification');
+const { getUnreadCount, markAllRead } = require('../Controllers/NotificationController');
+const auth = require('../Middleware/auth');
+const User = require('../Models/User');
+
+const requireAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('isAdmin');
+    if (!user?.isAdmin) return res.status(403).json({ message: 'Admin access required' });
+    return next();
+  } catch (error) {
+    return res.status(500).json({ message: 'Could not verify notification permissions' });
+  }
+};
 
 
-router.post('/send-multiple', sendMultipleNotifications);
-router.post('/:userId', addNotification);
+router.post('/send-multiple', auth, requireAdmin, sendMultipleNotifications);
+router.get('/unread/:userId', auth, getUnreadCount);
+router.post('/read/:userId', auth, markAllRead);
+router.post('/:userId', auth, addNotification);
 module.exports = router;

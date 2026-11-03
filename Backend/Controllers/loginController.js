@@ -2,6 +2,7 @@ const User = require('../Models/User');
 const bcrypt = require('bcrypt');
 const { randomBytes } = require('node:crypto');
 const generateTokens = require('../Utils/generateTokens');
+const jwt = require('jsonwebtoken');
 const emailService = require('../Utils/emailService');
 require('dotenv').config();
 
@@ -109,6 +110,42 @@ exports.login = async (req, res) => {
         console.error("Login failed:", error.message);
         const statusCode = error.code === "JWT_CONFIG_MISSING" ? 500 : 400;
         return res.status(statusCode).json({ error: error.message });
+    }
+};
+
+exports.refreshSession = async (req, res) => {
+    const { refreshToken } = req.body || {};
+    if (!refreshToken) {
+        return res.status(401).json({ message: "Refresh token required" });
+    }
+
+    if (!process.env.REFRESH_TOKEN_SECRET || !process.env.ACCESS_TOKEN_SECRET) {
+        console.error("Session refresh unavailable: JWT signing secrets are not configured");
+        return res.status(500).json({ message: "Session refresh is temporarily unavailable" });
+    }
+
+    let decoded;
+    try {
+        decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (error) {
+        return res.status(401).json({ message: "Refresh token is invalid or expired" });
+    }
+
+    if (decoded.type !== "refresh" || !decoded.sub) {
+        return res.status(401).json({ message: "Refresh token is invalid or expired" });
+    }
+
+    try {
+        const user = await User.findById(decoded.sub).select("_id");
+        if (!user) {
+            return res.status(401).json({ message: "Refresh token is invalid or expired" });
+        }
+
+        const tokens = generateTokens({ userId: user._id.toString(), role: "user" });
+        return res.status(200).json(tokens);
+    } catch (error) {
+        console.error("Session refresh failed while loading the user:", error.message);
+        return res.status(500).json({ message: "Session refresh is temporarily unavailable" });
     }
 };
 
