@@ -153,7 +153,7 @@ Every email is wrapped by `Utils/emailService.js`, which attaches the Preacher C
 
 ### Policy acceptance
 
-`PATCH /user/:userId/legal-consent` requires the user's access token and only allows the authenticated user to accept for their own account. The backend stores acceptance timestamps and document versions on the user record. The Next.js protected layout requires acceptance of the current Terms and Conditions and Privacy Policy versions before the user can continue.
+`GET /legal/terms` and `GET /legal/privacy` return each backend-owned Markdown policy's title, version, and source content. `GET /legal/versions` returns the current versions used by the acceptance gate. `PATCH /user/:userId/legal-consent` requires the user's access token and only allows the authenticated user to accept for their own account. Its payload is `{ "accepted": true }`; the backend records separate acceptance timestamps and the current document versions on the user record. The Next.js frontend loads policy content and versions only through these APIs.
 
 ### Session refresh
 

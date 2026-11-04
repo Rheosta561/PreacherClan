@@ -1,6 +1,7 @@
 const expres = require('express');
 const router = expres.Router();
 const User = require('../Models/User');
+const { getPolicyVersions } = require('../Services/legalPolicyService');
 
 router.get('/:userId' , async(req,res)=>{
     try {
@@ -51,15 +52,14 @@ router.patch('/:userId/legal-consent', auth, async (req, res) => {
         if (req.user.id !== req.params.userId) {
             return res.status(403).json({ message: 'Forbidden' });
         }
-        const { termsVersion, privacyPolicyVersion } = req.body || {};
-        if (termsVersion !== '2026-11-04' || privacyPolicyVersion !== '2026-11-04') {
-            return res.status(400).json({ message: 'Please accept the current terms and privacy policy.' });
+        if (req.body?.accepted !== true) {
+            return res.status(400).json({ message: 'Acceptance is required to continue.' });
         }
 
-        const acceptedAt = new Date();
+        const { termsVersion, privacyPolicyVersion } = getPolicyVersions();
         const user = await User.findByIdAndUpdate(req.params.userId, {
-            termsAcceptedAt: acceptedAt,
-            privacyPolicyAcceptedAt: acceptedAt,
+            termsAcceptedAt: new Date(),
+            privacyPolicyAcceptedAt: new Date(),
             termsVersion,
             privacyPolicyVersion,
         }, { new: true }).select('termsAcceptedAt privacyPolicyAcceptedAt termsVersion privacyPolicyVersion');
