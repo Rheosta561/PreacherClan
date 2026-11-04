@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { addNotification ,sendMultipleNotifications } = require('../Controllers/AddNotification');
-const { getUnreadCount, markAllRead } = require('../Controllers/NotificationController');
+const { getNotifications, getUnreadCount, markAllRead, savePushToken } = require('../Controllers/NotificationController');
 const auth = require('../Middleware/auth');
 const User = require('../Models/User');
 
@@ -17,6 +17,8 @@ const requireAdmin = async (req, res, next) => {
 
 
 router.post('/send-multiple', auth, requireAdmin, sendMultipleNotifications);
+router.post('/push-token', auth, savePushToken);
+router.get('/:userId', auth, getNotifications);
 router.get('/unread/:userId', auth, getUnreadCount);
 router.post('/read/:userId', auth, markAllRead);
 router.post('/:userId', auth, addNotification);

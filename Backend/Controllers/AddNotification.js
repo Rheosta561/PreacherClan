@@ -6,7 +6,7 @@ const emailService = require('../Utils/emailService');
 exports.addNotification = async (req, res) => {
     try {
         const userId = req.params.userId; 
-        const {  message, type } = req.body;
+        const { message, type, sendEmail: requestEmail } = req.body;
 
         if (req.user?.id !== userId) {
             return res.status(403).json({ message: 'You can only create notifications for your account' });
@@ -30,12 +30,21 @@ exports.addNotification = async (req, res) => {
 
         await notification.save();
         // Emit notification to the user if they are online
-        if (type === 'email') {
-            await emailService.sendEmail({
-                to: user.email,
-                subject: 'You Have a New Notification',
-                text: message,
-            });
+        let emailSent = false;
+        let emailErrorMessage;
+        if (requestEmail === true || type === 'email') {
+            try {
+                await emailService.sendEmail({
+                    to: user.email,
+                    subject: 'You Have a New Notification',
+                    html: `<p>Hello ${escapeHtml(user.name || 'Preacher Clan member')},</p><p>${escapeHtml(message.trim())}</p><p>#EkRepAur</p>`,
+                    text: `Hello ${user.name || 'Preacher Clan member'},\n\n${message.trim()}\n\n#EkRepAur`,
+                });
+                emailSent = true;
+            } catch (emailError) {
+                console.error('Notification email delivery failed:', emailError.message);
+                emailErrorMessage = 'The in-app notification was saved, but its email could not be delivered.';
+            }
         }
         const socketId = onlineUsers.get(userId.toString());
         if (socketId) {
@@ -43,7 +52,7 @@ exports.addNotification = async (req, res) => {
             io.to(socketId).emit('notification', notification);
         }
         // Respond with the created notification    
-        res.status(201).json(notification);
+        res.status(201).json({ ...notification.toObject(), emailSent, ...(emailErrorMessage ? { emailError: emailErrorMessage } : {}) });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: error.message });
@@ -57,6 +66,9 @@ exports.sendMultipleNotifications = async (req, res) => {
     }
     const users = await User.find(); // Fetch all users
     const io = getIo();
+    let emailAttempted = 0;
+    let emailSent = 0;
+    let emailFailed = 0;
 
     for (const user of users) {
         
@@ -65,110 +77,21 @@ exports.sendMultipleNotifications = async (req, res) => {
         message: req.body.message.trim(),
         type: ['info', 'warning', 'error'].includes(req.body.type) ? req.body.type : 'info',
       });
-      const html = `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background: #f4f4f4;
+      if (user.email) {
+        emailAttempted += 1;
+        try {
+          await emailService.sendEmail({
+            to: user.email,
+            subject: 'You Have a New Notification',
+            html: `<p>Hello ${escapeHtml(user.name || 'Preacher Clan member')},</p><p>${escapeHtml(notification.message)}</p><p>#EkRepAur</p>`,
+            text: `Hello ${user.name || 'Preacher Clan member'},\n\n${notification.message}\n\n#EkRepAur`,
+          });
+          emailSent += 1;
+        } catch (emailError) {
+          emailFailed += 1;
+          console.error(`Notification email delivery failed for ${user.email}:`, emailError.message);
         }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            background: #fff;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .header {
-            text-align: center;
-            padding: 15px;
-            background: #000000;
-            color: white;
-            border-radius: 10px 10px 0 0;
-        }
-        .content {
-            padding: 20px;
-            color: #333;
-        }
-        .title {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #ba047e;
-            text-align: center;
-        }
-        .message {
-            font-size: 1rem;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .footer {
-            text-align: center;
-            padding: 10px;
-            font-size: 0.9rem;
-            color: #888;
-            border-top: 1px solid #ccc;
-            margin-top: 20px;
-        }
-        .logo {
-            height: 60px;
-            width: auto;
-            margin-bottom: 10px;
-        }
-        /* Responsive */
-        @media screen and (max-width: 480px) {
-            .container {
-                margin: 10px;
-                padding: 15px;
-            }
-            .title {
-                font-size: 1.25rem;
-            }
-            .message {
-                font-size: 0.9rem;
-            }
-            .logo {
-                height: 50px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <img src="https://i.pinimg.com/736x/18/77/2d/18772d8fe4fe3dafe5a34fdbdff8b9d7.jpg" alt="Preacher Clan Logo" class="logo" />
-        </div>
-        <div class="content">
-            <div class="title">Notification from Preacher Clan</div>
-            <div class="message">
-                Dear <b>${user.name}</b>,<br /><br />
-                ${notification.message}
-            </div>
-            <hr />
-            <div style="text-align:center; font-style: italic; color: #555;">
-                Thank you for being part of our community.<br />
-                Stay strong, stay motivated!
-            </div>
-        </div>
-        <div class="footer">
-            Preacher Clan &copy; 2025 — All rights reserved.
-        </div>
-    </div>
-</body>
-</html>
-`;
-
-       await emailService.sendEmail({
-         to: user.email,
-         subject: 'You Have a New Notification',
-         html,
-       });
+      }
 
       const socketId = onlineUsers.get(user._id.toString());
       if (socketId) {
@@ -176,9 +99,19 @@ exports.sendMultipleNotifications = async (req, res) => {
       }
     }
 
-    res.status(200).json({ message: 'Notifications sent successfully' });
+    res.status(200).json({
+      message: 'Broadcast notifications processed',
+      users: users.length,
+      email: { attempted: emailAttempted, sent: emailSent, failed: emailFailed },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: error.message });
   }
 };
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+}

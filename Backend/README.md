@@ -133,11 +133,27 @@ All notification routes are mounted at `/notifications`. Every route requires `A
 | Method and path | Behavior |
 | --- | --- |
 | `GET /notifications/unread/:userId` | Returns `{ "count": number }` for the signed-in user's unread notifications. |
+| `GET /notifications/:userId?limit=50` | Returns the signed-in user's newest persisted notifications (limit is clamped to 1–100). |
 | `POST /notifications/read/:userId` | Marks all of the signed-in user's notifications as read and returns `{ "success": true, "modifiedCount": number }`. |
-| `POST /notifications/:userId` | Persists a notification for the signed-in user and emits it to that user's active Socket.IO connection. Body: `{ "message": "...", "type": "info" }`; supported types are `info`, `warning`, and `error`. |
+| `POST /notifications/:userId` | Persists a notification for the signed-in user and emits it to that user's active Socket.IO connection. Body: `{ "message": "...", "type": "info", "sendEmail": false }`; supported types are `info`, `warning`, and `error`. Set `sendEmail: true` for a branded email. |
 | `POST /notifications/send-multiple` | Admin only. Persists and emails a broadcast to all users and emits it to connected users. Body: `{ "message": "...", "type": "info" }`. |
+| `POST /notifications/push-token` | Stores an Expo push token for the authenticated user. Body: `{ "userId": "<your id>", "token": "ExponentPushToken[...]" }`. |
 
-The Next.js notification context reads the unread count and marks all notifications as read through the first two routes. Live notifications are persisted and delivered over the `notification` Socket.IO event. There is no list-history endpoint yet; the frontend stores live events in local storage.
+The Next.js notification context loads persisted notifications and unread count, marks them read through the routes above, and updates the feed over the `notification` Socket.IO event. The browser frontend does not generate fake Expo tokens; native clients must register a real Expo token through `POST /notifications/push-token`.
+
+Every email is wrapped by `Utils/emailService.js`, which attaches the Preacher Clan logo and includes the `#EkRepAur` footer. Push, email, and socket delivery failures are isolated from the action that created the notification where possible.
+
+### Notification trigger map
+
+- Offline direct messages create an in-app notification, emit it over Socket.IO when the recipient is connected, and attempt Expo push delivery when a valid Expo token exists. Online direct messages are delivered through the message socket event.
+- Gym announcements persist in-app notifications and independently attempt the configured socket, push, and email channels.
+- Weekly workout summaries persist an in-app notification, emit it to connected users, and send a branded email. A delivery failure for one channel does not prevent trying the others.
+- User-created notifications and admin broadcasts use the `/notifications` routes above. Match notifications in `Utils/matchService.js` are a legacy helper and are not currently called by a controller.
+- Monthly score reset currently sends a branded email but does not create an in-app notification.
+
+### Policy acceptance
+
+`PATCH /user/:userId/legal-consent` requires the user's access token and only allows the authenticated user to accept for their own account. The backend stores acceptance timestamps and document versions on the user record. The Next.js protected layout requires acceptance of the current Terms and Conditions and Privacy Policy versions before the user can continue.
 
 ### Session refresh
 

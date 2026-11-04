@@ -73,7 +73,7 @@ const renderBrandedEmailHtml = ({ html, text }) => {
             </tr>
             <tr>
               <td align="center" style="padding:18px 24px;background-color:#09090b;border-top:1px solid #27272a;color:#a1a1aa;font-family:'Montserrat',Arial,sans-serif;font-size:12px;line-height:1.6;">
-                Preacher Clan &mdash; Ek Rep Aur
+                Preacher Clan &mdash; #EkRepAur
               </td>
             </tr>
           </table>

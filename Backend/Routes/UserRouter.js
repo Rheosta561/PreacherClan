@@ -46,6 +46,35 @@ router.patch('/:userId/onboard', async (req, res) => {
 
 const auth = require('../Middleware/auth');
 
+router.patch('/:userId/legal-consent', auth, async (req, res) => {
+    try {
+        if (req.user.id !== req.params.userId) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+        const { termsVersion, privacyPolicyVersion } = req.body || {};
+        if (termsVersion !== '2026-11-04' || privacyPolicyVersion !== '2026-11-04') {
+            return res.status(400).json({ message: 'Please accept the current terms and privacy policy.' });
+        }
+
+        const acceptedAt = new Date();
+        const user = await User.findByIdAndUpdate(req.params.userId, {
+            termsAcceptedAt: acceptedAt,
+            privacyPolicyAcceptedAt: acceptedAt,
+            termsVersion,
+            privacyPolicyVersion,
+        }, { new: true }).select('termsAcceptedAt privacyPolicyAcceptedAt termsVersion privacyPolicyVersion');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        return res.json({
+            termsAcceptedAt: user.termsAcceptedAt,
+            privacyPolicyAcceptedAt: user.privacyPolicyAcceptedAt,
+            termsVersion: user.termsVersion,
+            privacyPolicyVersion: user.privacyPolicyVersion,
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'Could not save policy acceptance' });
+    }
+});
+
 router.patch('/:userId/split', auth, async (req, res) => {
     try {
         if (req.user.id !== req.params.userId) {

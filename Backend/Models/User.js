@@ -48,6 +48,10 @@ const userSchema = new mongoose.Schema({
   isTrainer: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   onboardingCompleted: { type: Boolean, default: false },
+  termsAcceptedAt: { type: Date },
+  privacyPolicyAcceptedAt: { type: Date },
+  termsVersion: { type: String },
+  privacyPolicyVersion: { type: String },
 
   // Fitness Data
   streak: {
@@ -59,6 +63,7 @@ const userSchema = new mongoose.Schema({
   workoutHitsPerWeek: { type: Number, default: 0 },
   preacherScore: { type: Number, default: 0, index: -1 },
   currentSplitId: { type: String },
+  pushToken: { type: String },
 
   // Monthly Reset Fields
   lastMonthlyReset: { type: Date },

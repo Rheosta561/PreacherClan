@@ -9,6 +9,21 @@ const ensureOwnNotifications = (req, res) => {
   return true;
 };
 
+exports.getNotifications = async (req, res) => {
+  try {
+    if (!ensureOwnNotifications(req, res)) return;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+    const notifications = await Notification.find({ userId: req.params.userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    return res.status(200).json({ notifications });
+  } catch (err) {
+    console.error("Failed to fetch notifications:", err);
+    return res.status(500).json({ message: "Failed to fetch notifications" });
+  }
+};
+
 exports.getUnreadCount = async (req, res) => {
   try {
     if (!ensureOwnNotifications(req, res)) return;
@@ -36,7 +51,11 @@ exports.markAllRead = async (req, res) => {
 
 exports.savePushToken = async (req, res) => {
   try {
-    const { token , userId } = req.body
+    const { token, userId } = req.body;
+
+    if (req.user?.id !== userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
 
     if (!token || !token.startsWith("ExponentPushToken")) {
       return res.status(400).json({ message: "Invalid push token" })
