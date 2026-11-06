@@ -205,7 +205,7 @@ Access tokens expire after 10 minutes by default, and refresh tokens rotate. Reu
 
 For `update_workout_split`, each `day_overrides` entry replaces that whole day's exercise list. Use either weekday names or codes (`Saturday` or `Sa`); exercises require `name`, integer `sets` (1-20), and integer `reps` (1-100). Optional exercise fields can be omitted or passed as `null`. Use `"exercises": []` to clear a day.
 
-When a user asks to add exercises without specifying whether they want video tutorials, the assistant should ask before updating the split. If requested, include only verified YouTube URLs in the `youtube` field; never guess or fabricate links.
+Do not delay an explicitly requested workout update to ask whether the user wants video tutorials. Lagertha uses its `youtube_video_search` tool to find relevant exercise demonstrations and includes only exact YouTube URLs returned by that search in the `youtube` field. If the search returns no suitable links, proceed without videos. Never guess or fabricate links.
 
 If the active split is a preset or belongs to another user, `update_workout_split` makes a personal copy, sets it as the caller's active split, and applies the requested edits only to that copy. The shared source remains unchanged. The response reports the new `split_id` and `copied_from_split_id`.
 

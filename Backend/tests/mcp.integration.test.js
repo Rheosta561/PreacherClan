@@ -151,7 +151,7 @@ test("Streamable HTTP exposes authenticated tools and returns only the principal
   assert.match(mcp.client.getInstructions(), /replaces the entire exercise list/i);
   assert.match(
     mcp.client.getInstructions(),
-    /ask whether they want YouTube tutorials included before calling update_workout_split/i
+    /Do not delay an explicitly requested workout update to ask whether the user wants video tutorials/i
   );
   assert.match(
     tools.find(({ name }) => name === "get_user_context").description,
@@ -184,7 +184,7 @@ test("Streamable HTTP exposes authenticated tools and returns only the principal
   );
   assert.match(
     updateTool.description,
-    /ask whether to include YouTube tutorials before calling this tool/i
+    /Do not delay a requested workout update to ask whether tutorial videos are wanted/i
   );
   assert.deepEqual(
     tools.map(({ name }) => name).sort(),
