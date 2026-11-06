@@ -3,6 +3,7 @@ const Profile = require("../Models/Profile");
 const { rerankCandidates } = require("../Utils/recommendationEngine");
 const request = require("../Models/Requests");
 const mongoose = require("mongoose");
+const { getNeighbors } = require("../Services/repmateMatcherService");
 const toValidObjectIds = (ids) =>
   Array.from(ids)
     .filter((id) => mongoose.Types.ObjectId.isValid(id))
@@ -97,53 +98,70 @@ const getProfileById = async (req, res) => {
 
     const excludedObjectIds = toValidObjectIds(excludeUserIds);
 
-    /* -------- SEMANTIC VECTOR SEARCH (ATLAS) -------- */
-    
+    /* -------- SEMANTIC VECTOR SEARCH (REPMATE MATCHER) -------- */
+    const requestedCount = Math.min(skip + limit, 100);
     let vectorUsers = [];
-    const hasEmbedding = currentUser.profile && currentUser.profile.embedding && currentUser.profile.embedding.length > 0;
+    const hasProfileText = Boolean(currentUser.profile && [
+      currentUser.profile.about,
+      ...(currentUser.profile.fitnessGoals || []),
+      ...(currentUser.profile.ambition || []),
+      ...(currentUser.profile.exerciseGenre || []),
+      currentUser.profile.timings,
+    ].some((value) => String(value || "").trim()));
 
-    if (hasEmbedding) {
+    if (hasProfileText) {
       try {
-        const semanticProfiles = await Profile.aggregate([
-          {
-            $vectorSearch: {
-              index: "vector_index",
-              path: "embedding",
-              queryVector: currentUser.profile.embedding,
-              numCandidates: 100,
-              limit: limit * 2, // Fetch extra to account for exclusions
-            }
-          },
-          {
-            $lookup: {
-              from: "users",
-              localField: "userId",
-              foreignField: "_id",
-              as: "userDoc"
-            }
-          },
-          { $unwind: "$userDoc" },
-          { $match: { "userDoc._id": { $nin: excludedObjectIds } } },
-          { $project: { semanticScore: { $meta: "vectorSearchScore" }, userDoc: 1 } }
-        ]);
-
-        const vectorUserIds = semanticProfiles.map(p => p.userDoc._id);
-        
-        // Fetch the full populated users
-        const populatedVectorUsers = await user.find({ _id: { $in: vectorUserIds } })
+        const matches = await getNeighbors(
+          userId,
+          currentUser.profile,
+          [...excludeUserIds],
+          requestedCount,
+        );
+        const rankedMatches = (matches?.neighbors || []).filter(
+          (match) => !excludeUserIds.has(String(match.user_id)),
+        );
+        const matchedIds = rankedMatches
+          .map((match) => match.user_id)
+          .filter((id) => mongoose.Types.ObjectId.isValid(id));
+        const hydratedUsers = await user.find({ _id: { $in: toValidObjectIds(matchedIds) } })
           .populate("profile")
           .populate("gym")
           .populate("partner")
           .lean();
-
-        // Attach semantic score to the lean user object
-        vectorUsers = populatedVectorUsers.map(u => {
-          const match = semanticProfiles.find(p => p.userDoc._id.toString() === u._id.toString());
-          return { ...u, semanticScore: match ? match.semanticScore : 0 };
+        const usersById = new Map(hydratedUsers.map((candidate) => [String(candidate._id), candidate]));
+        vectorUsers = rankedMatches.flatMap((match) => {
+          const candidate = usersById.get(String(match.user_id));
+          return candidate ? [{ ...candidate, semanticScore: Number(match.similarity) || 0 }] : [];
         });
-        
       } catch (err) {
-        console.error("Vector search failed, falling back to GEO:", err);
+        console.error("RepMate matcher unavailable, falling back to Atlas vector search:", err.message);
+        if (currentUser.profile?.embedding?.length) {
+          try {
+            const semanticProfiles = await Profile.aggregate([
+              { $vectorSearch: {
+                index: "vector_index",
+                path: "embedding",
+                queryVector: currentUser.profile.embedding,
+                numCandidates: Math.max(100, requestedCount * 5),
+                limit: requestedCount * 2,
+              } },
+              { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "userDoc" } },
+              { $unwind: "$userDoc" },
+              { $match: { "userDoc._id": { $nin: excludedObjectIds } } },
+              { $project: { semanticScore: { $meta: "vectorSearchScore" }, userDoc: 1 } },
+            ]);
+            const ids = semanticProfiles.map((item) => item.userDoc._id);
+            const hydratedUsers = await user.find({ _id: { $in: ids } })
+              .populate("profile").populate("gym").populate("partner").lean();
+            const byId = new Map(semanticProfiles.map((item) => [String(item.userDoc._id), item]));
+            vectorUsers = hydratedUsers.map((candidate) => ({
+              ...candidate,
+              semanticScore: byId.get(String(candidate._id))?.semanticScore || 0,
+            }));
+          } catch (fallbackError) {
+            console.error("Atlas vector fallback failed:", fallbackError.message);
+          }
+        }
       }
     }
 
@@ -156,7 +174,7 @@ const getProfileById = async (req, res) => {
     const combinedExcludedIds = [...excludedObjectIds, ...vectorUsers.map(u => u._id)];
 
     // Only run geo fallback if we don't have enough vector matches
-    if (vectorUsers.length < limit && currentUser.location?.coordinates?.length === 2) {
+    if (vectorUsers.length < requestedCount && currentUser.location?.coordinates?.length === 2) {
       const [lng, lat] = currentUser.location.coordinates;
 
       const rawGeoUsers = await user.aggregate([
@@ -169,7 +187,7 @@ const getProfileById = async (req, res) => {
           },
         },
         { $match: { _id: { $nin: combinedExcludedIds } } },
-        { $limit: limit - vectorUsers.length },
+        { $limit: requestedCount - vectorUsers.length },
       ]);
 
       geoUsers = await user.populate(rawGeoUsers, [
@@ -181,7 +199,7 @@ const getProfileById = async (req, res) => {
 
     const geoIds = geoUsers.map((u) => u._id);
     const finalExcluded = [...combinedExcludedIds, ...geoIds];
-    const remainingLimit = limit - (vectorUsers.length + geoUsers.length);
+    const remainingLimit = requestedCount - (vectorUsers.length + geoUsers.length);
 
     /* -------- NON-GEO USERS -------- */
 
@@ -202,11 +220,12 @@ const getProfileById = async (req, res) => {
     /* -------- COLLABORATIVE FILTERING (PEARSON RERANKING) -------- */
     
     // Rerank candidates based on interaction similarity (Gym, Friends, Split)
-    combinedUsers = rerankCandidates(currentUser, combinedUsers, limit);
+    combinedUsers = rerankCandidates(currentUser, combinedUsers, requestedCount);
 
     /* -------- FINAL PROFILES MAPPING -------- */
 
-    const profiles = combinedUsers.map((u) => ({
+    const pageUsers = combinedUsers.slice(skip, skip + limit);
+    const profiles = pageUsers.map((u) => ({
       userId: u._id,
       name: u.name,
       profileImage: u.profile?.profileImage || null,

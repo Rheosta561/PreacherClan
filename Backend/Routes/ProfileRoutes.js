@@ -6,6 +6,7 @@ const auth = require("../Middleware/auth");
 const multer = require("multer");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const { cloudinary } = require("../config/cloudinary");
+const { enqueueProfileUpsert, enqueueProfileDelete } = require("../Services/repmateMatcherService");
 
 // Dedicated Cloudinary storage for profile images
 const profileStorage = new CloudinaryStorage({
@@ -54,6 +55,8 @@ router.post("/:userId", auth, async (req, res) => {
     await user.save();
     profile.userId = req.params.userId;
     await profile.save();
+    void enqueueProfileUpsert(profile, user.gym?._id || user.gym?.gymId || user.gym)
+      .catch((error) => console.error("RepMate profile ingestion enqueue failed:", error.message));
     res.status(201).json({ profile, message: "Profile created successfully", user });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -132,6 +135,10 @@ router.put("/:userId", auth, (req, res, next) => {
       return res.status(404).json({ message: "Profile not found" });
     }
 
+    const profileOwner = await User.findById(req.params.userId).select("gym").lean();
+    void enqueueProfileUpsert(profile, profileOwner?.gym?._id || profileOwner?.gym?.gymId || profileOwner?.gym)
+      .catch((error) => console.error("RepMate profile ingestion enqueue failed:", error.message));
+
     res.json(profile);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -149,6 +156,8 @@ router.delete("/:userId", auth, async (req, res) => {
     if (!profile) {
       return res.status(404).json({ message: "Profile not found" });
     }
+    void enqueueProfileDelete(req.params.userId)
+      .catch((error) => console.error("RepMate profile deletion enqueue failed:", error.message));
     res.json({ message: "Profile deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -302,4 +302,15 @@ Please ensure that your code adheres to the project's coding standards and inclu
 ## License
 
 This project is licensed under the [MIT License](LICENSE) - see the [LICENSE](LICENSE) file for details.
-```
+
+## RepMate matcher integration
+
+The frontend keeps using the existing `GET /repmate/:userId?page=&limit=` route. Express loads the current profile and excludes the requesting user, accepted partners, and both endpoints of pending RepMate requests. It sends profile text and exclusions to the internal FastAPI `POST /internal/profiles/{user_id}/neighbors` endpoint using `X-Service-Secret`. The matcher generates a query embedding with Pinecone Integrated Inference and performs cosine search. Express hydrates candidate IDs from MongoDB, rechecks exclusions, applies the existing interaction reranking, then fills any shortfall with the existing Atlas-vector, geo, and non-geo fallback. The frontend response remains `{ page, limit, count, profiles }`; pagination stays in Express.
+
+Profile create/update/delete handlers publish events to `POST /internal/profiles/ingest`. The configured matcher queue (`QUEUE_TYPE=RABBITMQ` or `GCP`) processes events: upserts create one semantic passage/vector per profile; deletes remove the vector. Express sends profile text, never embeddings. Pinecone stores vector IDs and compact metadata; MongoDB remains authoritative. If an update clears every searchable field, Express queues a delete so the previous vector cannot remain recommendable.
+
+Set `REPMATE_MATCHER_URL` and `REPMATE_MATCHER_SECRET` in the backend environment. `REPMATE_MATCHER_SECRET` must equal the matcher's `SERVICE_SECRET`; keep both server-side. For local backend development use `http://localhost:8000`; in a shared Docker network use the matcher service hostname. Matcher requests time out after `REPMATE_MATCHER_TIMEOUT_MS` (default 8000 ms). The service URL, secret, queue provider, and Pinecone credentials are never part of the frontend contract.
+
+To backfill existing profiles, first configure MongoDB, the matcher, Pinecone, and the shared secret. From the Backend directory run `node Scripts/seedRepmateMatcher.js --dry-run`, then `node Scripts/seedRepmateMatcher.js`. Optional flags are `--limit=100` and `--concurrency=4` (maximum 20). The script loads profiles with linked users and queues profile text; Pinecone inference creates vectors in the dedicated index. A `202` response confirms queue acceptance, not completion of the vector write. Stable Mongo user IDs make repeated upserts safe.
+
+Delivery is currently best-effort from profile CRUD: enqueue failures are logged without failing profile writes, and there is no transactional outbox. Monitor those errors and rerun the idempotent backfill when needed. Keep the Atlas/geo fallback until the matcher namespace has been populated and verified.
