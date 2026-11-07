@@ -1,5 +1,6 @@
 const user = require("../Models/User");
 const Profile = require("../Models/Profile");
+const Gym = require("../Models/Gym");
 const { rerankCandidates } = require("../Utils/recommendationEngine");
 const request = require("../Models/Requests");
 const mongoose = require("mongoose");
@@ -268,74 +269,63 @@ const getProfileById = async (req, res) => {
 
 const getTopPreachersOfTown = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit) || 5, 10);
+    const userId = req.user?.id || req.params.userId;
+    if (!userId) return res.status(401).json({ message: "Authentication required" });
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 5, 10));
+    const currentUser = await user.findById(userId).select('_id gym');
 
-    const currentUser = await user
-      .findById(userId)
-      .populate("profile")
-      .populate("gym");
+    if (!currentUser) return res.status(404).json({ message: "User not found" });
 
-    if (!currentUser) {
-      return res.status(404).json({ message: "User not found" });
+    const currentGymId = currentUser.gym && typeof currentUser.gym === "object"
+      ? currentUser.gym._id || currentUser.gym.id
+      : currentUser.gym;
+    const currentGym = currentGymId ? await Gym.findById(currentGymId).select('_id name address.city') : null;
+    const town = currentGym?.address?.city?.trim();
+
+    if (!town) {
+      return res.status(200).json({
+        count: 0,
+        profiles: [],
+        locality: { city: null, match: "exact-city", radiusKm: null },
+      });
     }
 
-    // exclusion logic
-    const excludeUserIds = new Set([userId.toString()]);
+    const escapedTown = town.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const townGyms = await Gym.find({ "address.city": { $regex: `^${escapedTown}$`, $options: "i" } })
+      .select('_id name address.city')
+      .lean();
+    const townGymIds = townGyms.map((gymDoc) => gymDoc._id);
+    const gymsById = new Map(townGyms.map((gymDoc) => [String(gymDoc._id), gymDoc]));
 
-    currentUser.partner?.forEach((p) => excludeUserIds.add(p.toString()));
-
-    const pendingRequests = await request
-      .find({
-        status: "pending",
-        $or: [{ sender: userId }, { receiver: userId }],
-      })
-      .select("sender receiver");
-
-    pendingRequests.forEach((r) => {
-      excludeUserIds.add(r.sender.toString());
-      excludeUserIds.add(r.receiver.toString());
-    });
-
-    const excludedObjectIds = Array.from(excludeUserIds).map(
-      (id) => new mongoose.Types.ObjectId(id),
-    );
-
-    //  locallity
-    let cityFilter = {};
-
-    if (currentUser.gym?.city) {
-      cityFilter = { "gym.city": currentUser.gym.city };
-    }
-
-    // toppreachers
     const topPreachers = await user
-      .find({
-        _id: { $nin: excludedObjectIds },
-        preacherScore: { $gt: 0 },
-        ...cityFilter,
-      })
-      .sort({ preacherScore: -1 })
+      .find({ gym: { $in: townGymIds }, preacherScore: { $gt: 0 } })
+      .sort({ preacherScore: -1, _id: 1 })
       .limit(limit)
-      .populate("profile")
-      .populate("gym")
+      .populate('profile')
       .lean();
 
-    const profiles = topPreachers.map((u) => ({
-      userId: u._id,
-      name: u.name,
-      profileImage: u.profile?.profileImage || null,
-      preacherScore: u.preacherScore || 0,
-      isVerified: u.isVerified,
-      isTrainer: u.isTrainer,
-      gym: u.gym || null,
-      timings: u.profile?.timings || "Flexible",
-      fitnessGoals: u.profile?.fitnessGoals || [],
-    }));
+    const profiles = topPreachers.map((preacher) => {
+      const preacherGym = preacher.gym && typeof preacher.gym === "object"
+        ? preacher.gym._id || preacher.gym.id
+        : preacher.gym;
+      const gymDoc = gymsById.get(String(preacherGym));
+      return {
+        userId: preacher._id,
+        name: preacher.name,
+        profileImage: preacher.profile?.profileImage || null,
+        preacherScore: preacher.preacherScore || 0,
+        isVerified: preacher.isVerified,
+        isTrainer: preacher.isTrainer,
+        gym: gymDoc ? { _id: gymDoc._id, name: gymDoc.name } : null,
+        timings: preacher.profile?.timings || "Flexible",
+        fitnessGoals: preacher.profile?.fitnessGoals || [],
+      };
+    });
 
     return res.status(200).json({
       count: profiles.length,
       profiles,
+      locality: { city: town, match: "exact-city", radiusKm: null },
     });
   } catch (error) {
     console.error("getTopPreachersOfTown error:", error);

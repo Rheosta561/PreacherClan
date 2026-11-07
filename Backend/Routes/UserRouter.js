@@ -2,8 +2,26 @@ const expres = require('express');
 const router = expres.Router();
 const User = require('../Models/User');
 const { getPolicyVersions } = require('../Services/legalPolicyService');
+const auth = require('../Middleware/auth');
 
-router.get('/:userId' , async(req,res)=>{
+const requireOwnUser = (req, res, next) => {
+    if (String(req.user?.id) !== String(req.params.userId)) return res.status(403).json({ message: 'Forbidden' });
+    return next();
+};
+
+router.get('/me', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id)
+            .select('-password -__v')
+            .populate('gym', '_id name');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        return res.json(user);
+    } catch (error) {
+        return res.status(500).json({ message: 'Could not load account' });
+    }
+});
+
+router.get('/:userId', auth, requireOwnUser, async(req,res)=>{
     try {
         const user = await User.findById(req.params.userId)
             .select('-password -__v')
@@ -19,7 +37,7 @@ router.get('/:userId' , async(req,res)=>{
     }
 });
 
-router.patch('/:userId/age', async (req, res) => {
+router.patch('/:userId/age', auth, requireOwnUser, async (req, res) => {
     try {
         const { age } = req.body;
         if (typeof age !== 'number' || age <= 0) {
@@ -35,7 +53,7 @@ router.patch('/:userId/age', async (req, res) => {
     }
 });
 
-router.patch('/:userId/onboard', async (req, res) => {
+router.patch('/:userId/onboard', auth, requireOwnUser, async (req, res) => {
     try {
         const user = await User.findByIdAndUpdate(req.params.userId, { onboardingCompleted: true }, { new: true });
         if (!user) return res.status(404).json({ message: 'User not found' });
@@ -45,7 +63,6 @@ router.patch('/:userId/onboard', async (req, res) => {
     }
 });
 
-const auth = require('../Middleware/auth');
 
 router.patch('/:userId/legal-consent', auth, async (req, res) => {
     try {
