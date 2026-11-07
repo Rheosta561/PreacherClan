@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const chatSchema = new mongoose.Schema(
   {
+    pairKey: { type: String, unique: true, sparse: true, index: true },
     chatName: {
       type: String,
       trim: true,

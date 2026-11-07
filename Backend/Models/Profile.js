@@ -13,7 +13,7 @@ const ProfileSchema = new mongoose.Schema({
     fitnessGoals: [{ type: String }], 
     ambition: [{ type: String }], 
     timings: { type: String, default: "" },
-    exerciseGenre: [{ type: String, enum: ["Cardio", "Weight Training"] }],
+    exerciseGenre: [{ type: String, enum: ["Cardio", "Weight Training", "CrossFit"] }],
     milestones: [{ type: mongoose.Schema.Types.ObjectId, ref: "Milestone" }],
     preacherRank: { type: Number, default: 0 },
     embedding: { type: [Number] }, // 768-dimensional Gemini embedding

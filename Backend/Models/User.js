@@ -27,6 +27,17 @@ const GymMembershipSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const ChallengeSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    description: { type: String, required: true, trim: true },
+    rules: { type: [String], default: [] },
+    createdAt: { type: Date, default: Date.now },
+    isCompleted: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   username: { type: String, unique: true },
@@ -64,6 +75,9 @@ const userSchema = new mongoose.Schema({
   preacherScore: { type: Number, default: 0, index: -1 },
   currentSplitId: { type: String },
   pushToken: { type: String },
+
+  // Daily generated challenges
+  challenges: { type: [ChallengeSchema], default: [] },
 
   // Monthly Reset Fields
   lastMonthlyReset: { type: Date },
